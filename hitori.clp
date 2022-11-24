@@ -464,6 +464,73 @@
 ;;;TODO: es fehlt noch eine generelle regel für no islands, nur die rand-regel
 ;;; reicht net.
 
+;;; Template para el backtracking
+; (deftemplate backtracking-step
+;   (slot step-number)
+;   (slot fila)
+;   (slot columna)
+; )
+
+; (defrule backtrack-inicio
+;  (declare (salience -8))
+;  (not (puzle-resuelto))
+;  (not (backtracking-step (step-number ?)))
+;  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
+;  => 
+;  (printout t "backtrack-inicio" crlf)
+;  (assert (backtracking-step (step-number 0) (fila ?f) (columna ?c)))
+;  (modify ?h (estado eliminado))
+; )
+
+; (defrule backtrack-paso
+;  (declare (salience -8))
+;  (not (puzle-resuelto))
+;  ?s <- (backtracking-step (step-number ?n))
+;  (not (backtracking-step (step-number ?n2&:(> ?n2 ?n))))
+;  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
+;  => 
+;  (printout t "backtrack-paso" crlf)
+;  (assert (backtracking-step (step-number (+ ?n 1)) (fila ?f) (columna ?c)))
+;  (modify ?h (estado eliminado))
+; )
+
+; (defrule undo-backtrack 
+;  (declare (salience -8))
+;  (not (puzle-resuelto))
+;  (undo-backtrack)
+;  ?s <- (backtracking-step (step-number ?n) (fila ?f) (columna ?c))
+;  ?h <- (celda (fila ?f) (columna ?c))
+;  => 
+;  (printout t "undo-backtrack" crlf)
+;  (retract ?s)
+;  (modify ?h (estado desconocido))
+; )
+
+; (defrule undo-first-backtrack 
+;  (declare (salience -9))
+;  (not (puzle-resuelto))
+;  (undo-backtrack)
+;  ?s <- (backtracking-step (step-number 0) (fila ?f) (columna ?c))
+;  (not (backtracking-step (step-number ?n&~0)))
+;  ?h <- (celda (fila ?f) (columna ?c))
+;  => 
+;  (printout t "undo-first-backtrack" crlf)
+;  (retract ?s)
+;  (modify ?h (estado asignado))
+; )
+
+; (defrule error-dos-eliminadas-juntas
+;  (celda (fila ?f1) (columna ?c1) (valor ?v1) (estado eliminado))
+;  (celda (fila ?f2) (columna ?c2) (valor ?v2) (estado eliminado))
+;  (test (or
+;         (and (= ?f1 ?f2) (= ?c1 (+ ?c2 1)))
+;         (and (= ?c1 ?c2) (= ?f1 (+ ?f2 1)))
+;        ))
+;  =>
+;  (printout t "error-junta!" crlf)
+;  (assert (undo-backtrack))
+; )
+
 
 ;;;============================================================================
 ;;; Reglas para imprimir el resultado
