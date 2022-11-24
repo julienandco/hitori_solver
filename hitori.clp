@@ -338,11 +338,11 @@
   (celda (fila ?f2) (columna ?c2) (estado eliminado))
   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido))
   (test (or 
-          ; lado izquierdo del tablero
-          (and (= ?c1 1) (= ?f2 (- ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 (- ?f1 2)) (= ?c3 ?c1)) ;la de arriba esta desconocida
+          ; lado izquierdo del tablero (columna 1)
+          (and (= ?c1 1) (= ?f2 (- ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 (- ?f1 2)) (= ?c3 ?c1)) ;la celda de arriba esta desconocida
           (and (= ?c1 1) (= ?f2 (+ ?f1 2)) (= ?c2 ?c1) (= ?f3 (+ ?f1 1)) (= ?c3 (+ ?c1 1))) ;la de derecho esta desconocida
           (and (= ?c1 1) (= ?f2 (+ ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 (+ ?f1 2)) (= ?c3 ?c1)) ;la de abajo esta desconocida
-          ; lado derecho del tablero
+          ; lado derecho del tablero (columna 9)
           (and (= ?c1 9) (= ?f2 (- ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 (- ?f1 2)) (= ?c3 ?c1)) ;la de arriba esta desconocida
           (and (= ?c1 9) (= ?f2 (+ ?f1 2)) (= ?c2 ?c1) (= ?f3 (+ ?f1 1)) (= ?c3 (- ?c1 1))) ;la de izquierda esta desconocida
           (and (= ?c1 9) (= ?f2 (+ ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 (+ ?f1 2)) (= ?c3 ?c1)) ;la de abajo esta desconocida
@@ -356,11 +356,11 @@
   (celda (fila ?f2) (columna ?c2) (estado eliminado))
   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido))
   (test (or 
-          ; lado arriba del tablero
-          (and (= ?f1 1) (= ?f2 ?f1) (= ?c2 (+ ?c1 2)) (= ?f3 (+ ?f1 1)) (= ?c3 (+ ?c1 1))) ;la de abajo esta desconocida
+          ; lado arriba del tablero (fila 1)
+          (and (= ?f1 1) (= ?f2 ?f1) (= ?c2 (+ ?c1 2)) (= ?f3 (+ ?f1 1)) (= ?c3 (+ ?c1 1))) ;la celda de abajo esta desconocida
           (and (= ?f1 1) (= ?f2 (+ ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 ?f1) (= ?c3 (- ?c1 2))) ;la de izquierda esta desconocida
           (and (= ?f1 1) (= ?f2 (+ ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 ?f1) (= ?c3 (+ ?c1 2))) ;la de derecha esta desconocida
-          ; lado abajo del tablero
+          ; lado abajo del tablero (fila 9)
           (and (= ?f1 9) (= ?f2 ?f1) (= ?c2 (+ ?c1 2)) (= ?f3 (- ?f1 1)) (= ?c3 (+ ?c1 1))) ;la de arriba esta desconocida
           (and (= ?f1 9) (= ?f2 (- ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 ?f1) (= ?c3 (- ?c1 2))) ;la de izquierda esta desconocida
           (and (= ?f1 9) (= ?f2 (- ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 ?f1) (= ?c3 (+ ?c1 2))) ;la de derecha esta desconocida
