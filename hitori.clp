@@ -369,6 +369,98 @@
   (modify ?h (estado asignado))
 )
 
+;;;TODO: this rule does not help at all
+; (defrule m-pair-col
+;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f1) (columna ?c2) (valor ?v2))
+;   (test(= ?c2 (+ ?c1 1)))
+;   (celda (fila ?f2) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
+;   (test(neq ?f1 ?f2))
+;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
+;   (test (or 
+;           (and (= ?c1 ?c3) (eq ?v1 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
+;           (and (= ?c2 ?c3) (eq ?v2 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
+;         ))
+;   => 
+;   (printout t "m-pair-col hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+
+; (defrule m-pair-fila
+;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c1) (valor ?v2))
+;   (test(= ?f2 (+ ?f1 1)))
+;   (celda (fila ?f1) (columna ?c2) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
+;   (test(neq ?c1 ?c2))
+;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
+;   (test (or 
+;           (and (= ?f1 ?f3) (eq ?v1 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
+;           (and (= ?f2 ?f3) (eq ?v2 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
+;         ))
+;   => 
+;   (printout t "m-pair-fila hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+
+;;; TODO: those roles do not help in solving
+; ;;; Si dos dobles son en "sandwich" en una fila/columna, todos los singulos de la 
+; ;;; misma fila/columna tienen que estar eliminados.
+; ;;;
+; ;;; 2 3 3 2 1 5 6 3 4 2
+; ;;;               ^   ^ (el singulo 3 y 2 ambos tienen que estar eliminados)
+; ;;;
+
+; (defrule isolacion-flancada-fila-1
+;   (celda (fila ?f) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f) (columna ?c2) (valor ?v2))
+;   (celda (fila ?f) (columna ?c3) (valor ?v2))
+;   (celda (fila ?f) (columna ?c4) (valor ?v1))
+;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
+;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v1))
+;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
+;   => 
+;   (printout t "flancada 1 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+; (defrule isolacion-flancada-fila-2
+;   (celda (fila ?f) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f) (columna ?c2) (valor ?v2))
+;   (celda (fila ?f) (columna ?c3) (valor ?v2))
+;   (celda (fila ?f) (columna ?c4) (valor ?v1))
+;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
+;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v2))
+;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
+;   => 
+;   (printout t "flancada 2 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+; (defrule isolacion-flancada-columna-1
+;   (celda (fila ?f1) (columna ?c) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c) (valor ?v2))
+;   (celda (fila ?f3) (columna ?c) (valor ?v2))
+;   (celda (fila ?f4) (columna ?c) (valor ?v1))
+;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
+;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v1))
+;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
+;   => 
+;   (printout t "flancada-col 1 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+; (defrule isolacion-flancada-columna-2
+;   (celda (fila ?f1) (columna ?c) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c) (valor ?v2))
+;   (celda (fila ?f3) (columna ?c) (valor ?v2))
+;   (celda (fila ?f4) (columna ?c) (valor ?v1))
+;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
+;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v2))
+;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
+;   => 
+;   (printout t "flancada-col 2 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+
 ;;;TODO: es fehlt noch eine generelle regel für no islands, nur die rand-regel
 ;;; reicht net.
 
