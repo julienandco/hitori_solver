@@ -477,18 +477,18 @@
 (deffunction procesa-ejemplos ()
   (open "ejemplos.txt" data "r")
   (bind ?datos (readline data))
-  (bind ?i 1)
+  (bind ?i 0)
   (bind ?res 0)
   (while (neq ?datos EOF)
+   (bind ?i (+ ?i 1))
    (reset)
    (procesa-datos-ejemplo ?datos)
    (printout t "ejemplos.txt :" ?i crlf)
    (run)
    (bind ?datos (readline data))
-   (do-for-all-facts ((?fct puzle-resuelto)) TRUE
-    (bind ?res (+ ?res 1)))
-   (bind ?i (+ ?i 1)))
-  (printout t "Resueltos: " ?res " / 50" crlf)
+   (do-for-fact ((?fct puzle-resuelto)) TRUE
+    (bind ?res (+ ?res 1))))
+  (printout t "Resueltos: " ?res " / " ?i crlf)
   (close data))
 
 ;;;============================================================================
