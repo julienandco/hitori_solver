@@ -369,40 +369,8 @@
   (modify ?h (estado asignado))
 )
 
-
-
-
 ;;;TODO: es fehlt noch eine generelle regel für no islands, nur die rand-regel
-
-;;;ALLES WAS JETZT KOMMT IST NOCH BS (BIS ZU DEM WAS PROF GESCHRIEBEN HATTE)
-
-;;; Si una celda en las esquinas del tablero (fila 1 o 9 y columna 1 o 9)
-;;; tiene una celda adyunta eliminada, entonces la otra celda adyunta tiene que
-;;; ser asignada.
-; (defrule no-encerrar-celdas-esquinas
-;   (celda (fila ?f1) (columna ?c1) (estado desconocido))
-;   ?h <- (celda (fila ?f2) (columna ?c2) (estado desconocido))
-;   (test (or (and (= ?f1 1) (= ?c1 1))
-;             (and (= ?f1 1) (= ?c1 9))
-;             (and (= ?f1 9) (= ?c1 1))
-;             (and (= ?f1 9) (= ?c1 9))))
-;   => 
-;   (modify ?h (estado asignado))
-; )
-; (defrule no-encerrar-celdas-esquinas
-;   (celda (fila ?f1) (columna ?c1) (estado eliminado))
-;   ?h <- (celda (fila ?f2) (columna ?c2) (estado desconocido))
-;   (test (or (and (= ?f1 1) (or (= ?c1 2) (?c1 8))) 
-;             (and (= ?f1 9) (or (= ?c1 2) (?c1 8))) 
-;             (and (= ?c1 1) (or (= ?f1 2) (?f1 8))) 
-;             (and (= ?c1 9) (or (= ?f1 2) (?f1 8)))))
-;   (test (or (and () ())
-;             (and () ())
-;             (and () ())
-;             (and () ())))
-;   => 
-;   (modify ?h (estado asignado))
-; )
+;;; reicht net.
 
 
 ;;;============================================================================
@@ -420,10 +388,11 @@
 ;;; celdas que tienen un estado 'eliminado' contienen un espacio en blanco y
 ;;; las celdas con el estado 'desconocido' contienen un sÃ­mbolo '?'.
 
+;;; TODO: just for dev
 (defrule imprime-resuelto
   (not (celda (estado desconocido)))
- => 
-  (printout t "Resuelto ! "crlf)
+  => 
+  (assert (puzle-resuelto))
 )
 
 (defrule imprime-solucion
@@ -501,7 +470,7 @@
   (run)
   (close data))
 
-;;;   Esta funciÃ³n comprueba todos los puzles de un fichero que se pasa como
+;;; Esta funciÃ³n comprueba todos los puzles de un fichero que se pasa como
 ;;; argumento. Se usa:
 ;;; CLIPS> (procesa-ejemplos)
 
@@ -509,13 +478,17 @@
   (open "ejemplos.txt" data "r")
   (bind ?datos (readline data))
   (bind ?i 1)
+  (bind ?res 0)
   (while (neq ?datos EOF)
    (reset)
    (procesa-datos-ejemplo ?datos)
    (printout t "ejemplos.txt :" ?i crlf)
    (run)
    (bind ?datos (readline data))
+   (do-for-all-facts ((?fct puzle-resuelto)) TRUE
+    (bind ?res (+ ?res 1)))
    (bind ?i (+ ?i 1)))
+  (printout t "Resueltos: " ?res " / 50" crlf)
   (close data))
 
 ;;;============================================================================
