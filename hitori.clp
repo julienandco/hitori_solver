@@ -423,7 +423,7 @@
 (defrule imprime-resuelto
   (not (celda (estado desconocido)))
  => 
-  (printout t "Resuelto!"crlf)
+  (printout t "Resuelto ! "crlf)
 )
 
 (defrule imprime-solucion
