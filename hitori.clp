@@ -531,6 +531,79 @@
 ;  (assert (undo-backtrack))
 ; )
 
+(deftemplate particion
+  (multislot miembros) ;;; Aqui se guardan las celdas que forman parte de la particion
+)
+
+;;; Determina si dos celda son vecinos o no
+(deffunction son-vecinos (?f1 ?c1 ?f2 ?c2)
+(return (or 
+        (and (= ?f2 (- ?f1 1)) (= ?c1 ?c2)) ;vecino arriba
+        (and (= ?f2 (+ ?f1 1)) (= ?c1 ?c2)) ;vecino abajo
+        (and (= ?f1 ?f2) (= ?c2 (+ ?c1 1))) ;vecino derecho
+        (and (= ?f1 ?f2) (= ?c2 (- ?c1 1))) ;vecino izquierdo
+        ))
+)
+
+;;; No queremos dobles en los miembros
+(defrule quitar-dobles-de-miembros-de-particion
+  ?p <- (particion (miembros $?x ?c $?y ?c $?z))
+  => 
+  (modify ?p (miembros $?x ?c $?y $?z))
+)
+
+;;; Cuando una particion tiene como vecino un miembro de una otra particion, las particiones
+;;; se unen y una de las dos particiones se elimina.
+(defrule unir-dos-particiones
+  ?h1 <- (celda (fila ?f1) (columna ?c1))
+  ?h2 <- (celda (fila ?f2) (columna ?c2))
+  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  ?p1 <- (particion (miembros $?x1 ?h1 $?y1))
+  ?p2 <- (particion (miembros $?x2 ?h2 $?y2))
+  (test (neq ?p1 ?p2))
+  =>
+  (modify ?p1 (miembros $?x1 ?h1 $?y1 $?x2 ?h2 $?y2))
+  (retract ?p2)
+)
+
+; ;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
+; ;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
+; ;;; que solo contiene la celda que acaba de ser asignada.
+(defrule añadir-asignado-a-particion-existente
+  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
+  ?h2 <- (celda (fila ?f2) (columna ?c2) (estado asignado))
+  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  (not (particion (miembros $?a ?h2 $?b)))
+  ?p <- (particion (miembros $?x ?h1 $?y))
+  => 
+  (modify ?p (miembros $?x ?h1 ?h2 $?y))
+)
+
+(defrule añadir-asignado-a-particion-nueva
+  ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
+  (not (particion (miembros $?x ?h $?y)))
+  => 
+  (assert (particion (miembros ?h)))
+)
+
+;;; Si una particion solo tiene un solo vecino, este vecino tiene que ser asignado:
+;;;
+;;; X
+;;; 3 X La particion que contiene el 3 solo tiene un vecino, el 2. Por eso, el 2 tiene que
+;;; 2   ser asignado, porque el 3 ne sea encerrado.
+; (defrule asignar-solo-vecino
+;   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
+;   ?h2 <- (celda (fila ?f2) (columna ?c2))
+;   (particion (miembros $? ?h2 $?))
+;   (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+;   ;;TODO: es gibt nur ein einziges feld das nachbar von partition ist mit estado desconocido
+;   ;;; sprich: alle anderen nachbarn sind eliminados -> alle nachbarn bestimmen how?
+
+;   ;;;TODO: eventuell doch ein anadir-vecinos einbauen? jz wo dauerschleife gefixed ist
+;   ;;; und ich fkt son-vecinos habe: x in part, y nicht in part, y nicht elim und x,y vecinos -> y in vecino
+;   => 
+;   (modify ?h1 (estado asignado))
+; );;;TODO: eliminert das die ganzen encerrar regeln?
 
 ;;;============================================================================
 ;;; Reglas para imprimir el resultado
@@ -548,7 +621,8 @@
 ;;; las celdas con el estado 'desconocido' contienen un sÃ­mbolo '?'.
 
 ;;; TODO: just for dev
-(defrule imprime-resuelto
+(defrule marca-como-resuelto
+  (declare (salience -9))
   (not (celda (estado desconocido)))
   => 
   (assert (puzle-resuelto))
@@ -620,6 +694,7 @@
 ;;; ejemplos. 
 
 (deffunction lee-puzle (?n)
+  (bind ?res 0)
   (open "ejemplos.txt" data "r")
   (loop-for-count (?i 1 (- ?n 1))
                   (readline data))
@@ -627,7 +702,11 @@
   (reset)
   (procesa-datos-ejemplo ?datos)
   (run)
-  (close data))
+  (close data)
+  (do-for-all-facts ((?fct particion)) TRUE
+    (bind ?res (+ ?res 1)))
+  (printout t "Particiones: " ?res crlf)
+)
 
 ;;; Esta funciÃ³n comprueba todos los puzles de un fichero que se pasa como
 ;;; argumento. Se usa:
