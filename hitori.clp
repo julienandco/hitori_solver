@@ -274,101 +274,6 @@
   (modify ?h (estado asignado))
 )
 
-;;; Si una celda en una esquina de tablero esta eliminada, lo otra tiene que ser 
-;;; asignada, porque no se puede encerrar una celda en una esquina.
-;;;
-;;; Ejemplo:
-;;;
-;;; 1 2 <- si el 2 esta eliminado, el 3 tiene que ser asignado
-;;; 3
-;;;
-(defrule no-encerrar-esquina
-  (celda (fila ?f1) (columna ?c1) (estado eliminado))
-  ?h <- (celda (fila ?f2) (columna ?c2) (estado desconocido))
-  (test (or 
-          (and (= ?f1 1) (= ?c1 2) (= ?f2 2) (= ?c2 1)) ;esquina arriba izquierda
-          (and (= ?f1 2) (= ?c1 1) (= ?f2 1) (= ?c2 2))
-          (and (= ?f1 1) (= ?c1 8) (= ?f2 2) (= ?c2 9)) ;esquina arriba derecha
-          (and (= ?f1 2) (= ?c1 9) (= ?f2 1) (= ?c2 8))
-          (and (= ?f1 8) (= ?c1 1) (= ?f2 9) (= ?c2 2)) ;esquina abaja izquierda
-          (and (= ?f1 9) (= ?c1 2) (= ?f2 8) (= ?c2 1))
-          (and (= ?f1 8) (= ?c1 9) (= ?f2 9) (= ?c2 8)) ;esquina abaja derecha
-          (and (= ?f1 9) (= ?c1 8) (= ?f2 8) (= ?c2 9))
-        ))
-  => 
-  (modify ?h (estado asignado))
-)
-
-;;; Una celda no puede ser encerrada de todos los cuatros lados por celdas eliminadas.
-;;;
-;;; Ejemplo:
-;;;   5
-;;; 4 1 2 <- si el 2,3 y 4 estan eliminados, el 5 tiene que ser asignado
-;;;   3
-;;;
-(defrule no-encerrar-cuadro
-  (celda (fila ?f1) (columna ?c1) (estado eliminado))
-  (celda (fila ?f2) (columna ?c2) (estado eliminado))
-  (celda (fila ?f3) (columna ?c3) (estado eliminado))
-  ?h <- (celda (fila ?f4) (columna ?c4) (estado desconocido))
-  (test (or 
-          (and (= ?f2 ?f1) (= ?c2 (+ ?c1 2)) (= ?f3 (+ ?f1 1)) (= ?c3 (+ ?c1 1)) (= ?f4 (- ?f1 1)) (= ?c4 (+ ?c1 1))) ;la de arriba esta desconocida
-          (and (= ?f2 (- ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 (+ ?f1 1)) (= ?c3 (+ ?c1 1)) (= ?f4 ?f1) (= ?c4 (+ ?c1 2))) ;la de derecha esta desconocida
-          (and (= ?f2 (- ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 ?f1) (= ?c3 (+ ?c1 2)) (= ?f4 (+ ?f1 1)) (= ?c4 (+ ?c1 1))) ;la de abajo esta desconocida
-          (and (= ?f2 (+ ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 (+ ?f1 2)) (= ?c3 ?c1) (= ?f4 (+ ?f1 1)) (= ?c4 (- ?c1 1))) ;la de izquierda esta desconocida
-        ))
-  => 
-  (modify ?h (estado asignado))
-)
-
-;;; Una celda al lado del tablero no puede ser encerrada de todos los tres lados 
-;;; por celdas eliminadas.
-;;;
-;;; Ejemplo:
-;;; | 4
-;;; | 1 2 <- si el 2 y 3 estan eliminados, el 4 tiene que ser asignado
-;;; | 3
-;;;
-;;;   2
-;;; 4 1 3  <- si el 2 y 3 estan eliminados, el 4 tiene que ser asignado
-;;; _____
-
-(defrule no-encerrar-lado-vertical
-  (celda (fila ?f1) (columna ?c1) (estado eliminado))
-  (celda (fila ?f2) (columna ?c2) (estado eliminado))
-  ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido))
-  (test (or 
-          ; lado izquierdo del tablero (columna 1)
-          (and (= ?c1 1) (= ?f2 (- ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 (- ?f1 2)) (= ?c3 ?c1)) ;la celda de arriba esta desconocida
-          (and (= ?c1 1) (= ?f2 (+ ?f1 2)) (= ?c2 ?c1) (= ?f3 (+ ?f1 1)) (= ?c3 (+ ?c1 1))) ;la de derecho esta desconocida
-          (and (= ?c1 1) (= ?f2 (+ ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 (+ ?f1 2)) (= ?c3 ?c1)) ;la de abajo esta desconocida
-          ; lado derecho del tablero (columna 9)
-          (and (= ?c1 9) (= ?f2 (- ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 (- ?f1 2)) (= ?c3 ?c1)) ;la de arriba esta desconocida
-          (and (= ?c1 9) (= ?f2 (+ ?f1 2)) (= ?c2 ?c1) (= ?f3 (+ ?f1 1)) (= ?c3 (- ?c1 1))) ;la de izquierda esta desconocida
-          (and (= ?c1 9) (= ?f2 (+ ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 (+ ?f1 2)) (= ?c3 ?c1)) ;la de abajo esta desconocida
-         ))
-  => 
-  (modify ?h (estado asignado))
-)
-
-(defrule no-encerrar-lado-horizontal
-  (celda (fila ?f1) (columna ?c1) (estado eliminado))
-  (celda (fila ?f2) (columna ?c2) (estado eliminado))
-  ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido))
-  (test (or 
-          ; lado arriba del tablero (fila 1)
-          (and (= ?f1 1) (= ?f2 ?f1) (= ?c2 (+ ?c1 2)) (= ?f3 (+ ?f1 1)) (= ?c3 (+ ?c1 1))) ;la celda de abajo esta desconocida
-          (and (= ?f1 1) (= ?f2 (+ ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 ?f1) (= ?c3 (- ?c1 2))) ;la de izquierda esta desconocida
-          (and (= ?f1 1) (= ?f2 (+ ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 ?f1) (= ?c3 (+ ?c1 2))) ;la de derecha esta desconocida
-          ; lado abajo del tablero (fila 9)
-          (and (= ?f1 9) (= ?f2 ?f1) (= ?c2 (+ ?c1 2)) (= ?f3 (- ?f1 1)) (= ?c3 (+ ?c1 1))) ;la de arriba esta desconocida
-          (and (= ?f1 9) (= ?f2 (- ?f1 1)) (= ?c2 (- ?c1 1)) (= ?f3 ?f1) (= ?c3 (- ?c1 2))) ;la de izquierda esta desconocida
-          (and (= ?f1 9) (= ?f2 (- ?f1 1)) (= ?c2 (+ ?c1 1)) (= ?f3 ?f1) (= ?c3 (+ ?c1 2))) ;la de derecha esta desconocida
-         ))
-  => 
-  (modify ?h (estado asignado))
-)
-
 ;;;TODO: this rule does not help at all
 ; (defrule m-pair-col
 ;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
@@ -567,6 +472,23 @@
   (modify ?p (vecinos $?v ?h1))
 )
 
+;;; Si una celda h esta eliminada y es vecino de una celda que esta parte de una particion,
+;;; la celda h tiene que quitarse del conjunto de vecinos de la particion
+(defrule quitar-vecinos-eliminados
+  ?h <- (celda (estado eliminado))
+  ?p <- (particion (vecinos $?a ?h $?b))
+  => 
+  (modify ?p (vecinos $?a $?b))
+)
+
+;;; Si un vecino ha estado asignado y ahora forma parte de los miembros de una particion,
+;;; entonces se tiene que quitar de los vecinos de la particion
+(defrule quitar-vecinos-asignados
+  ?p <- (particion (miembros $? ?v $?) (vecinos $?a ?v $?b))
+  => 
+  (modify ?p (vecinos $?a $?b))
+)
+
 ;;; Si una particion solo tiene a una sola celda desconocida como vecino, entonces esa celda
 ;;; tiene que estar asignada, porque la particion no se divide del resto del tablero
 (defrule asignar-unico-vecino
@@ -575,67 +497,6 @@
   ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
   => 
   (modify ?h1 (estado asignado))
-)
-
-
-;; -> vecino-de-particion ?f ?c ?miembros jetzt mit devolver-vecinos möglich???
-;; baue array von vecinos
-;; particion-vecinos = []
-;; tmp-miembros = miebmros
-;; while (tmp-miembros not empty)
-;; elem = nth 1 miembros
-;; vecinos = devolver-vecinos elem 
-;; add vecinos to particion-vecinos (w/o duplicates)
-;; do-for-all-facts (celda ?c ?f) (if (c f in vecinos UND celda in miembros) -> c f aus vecinos wieder raus )
-;; tmp-miembros = tmp-miembros - elem
-;; end while
-;; if (particion-vecinos contains ?f ?c) then true else false
-; (deffunction devolver-vecinos-de-particion (?miembros)
-;   (bind ?particion-vecinos (create$))
-;   (bind ?tmp-miembros ?miembros)
-;   (bind ?i (length$ ?tmp-miembros))
-;   (while (> ?i 0)
-;     (bind ?elem (first$ ?tmp-miembros))
-;     ; (bind ?elem (first$ ?tmp-miembros))
-;     (bind ?vecinos (devolver-vecinos ?elem:fila ?elem:columna)) 
-;     (bind ?particion-vecinos (insert$ ?vecinos 1 ?particion-vecinos));;TODO: w/o duplicates
-;     (bind ?a-quitar (find-all-facts ((?c celda)) (and (member$ ?c ?vecinos) (member$ ?c ?miembros))))
-;     (bind ?particion-vecinos (delete-member$ ?particion-vecinos ?a-quitar))
-;     ; (do-for-all-facts ((?c celda)) 
-;     ;   (if (and (member$ ?c ?vecinos) (member$ ?c ?miembros))
-;     ;     then (bind ?particion-vecinos (delete-member$ ?particion-vecinos ?c))
-;     ;   )
-;     ; )
-;     (bind ?tmp-miembros (delete-member$ ?tmp-miembros ?elem))
-;     (bind ?i (length$ ?tmp-miembros))
-;   )
-;   (return ?particion-vecinos)
-; )
-
-; (deffunction esta-celda-de-lado-de-particion (?celda)
-;   (bind ?tiene-vecinos-fuera-de-particion FALSE)
-;   (return ?tiene-vecinos-fuera-de-particion)
-; (do-for-fact ((?fct puzle-resuelto)) TRUE
-;     (bind ?res (+ ?res 1)))
-;   (do-for-fact ((?fct particion (miembros ($? ?h $?)))) ())
-; )
-; (deffunction esta-vecino-de-particion ?f ?c ?miembros
-;   (bind ?vecinos-de-particion (create$))
-;   (bind ?tmp-miembros ?miembros)
-;   (bind ?i (length$ ?tmp-miembros))
-;   (while (> ?i 0)
-;     (bind ?elem (first$ ?tmp-miembros))
-;     (bind ?vecinos (devolver-vecinos (nth$ 1 ?elem) (nth$ 2 ?elem)))
-;     (bind ?vecinos-de-particion (union$ ?vecinos-de-particion ?vecinos))
-;     (bind ?tmp-miembros (remove$ ?tmp-miembros ?elem))
-;   )
-; )
-
-;;; No queremos dobles en los miembros
-(defrule quitar-dobles-de-miembros-de-particion
-  ?p <- (particion (miembros $?x ?c $?y ?c $?z))
-  => 
-  (modify ?p (miembros $?x ?c $?y $?z))
 )
 
 ;;; Cuando una particion tiene como vecino un miembro de una otra particion, las particiones
@@ -671,85 +532,6 @@
   => 
   (assert (particion (miembros ?h)))
 )
-
-;;TODO: IDEE? -> funzt net.
-;; ex p1 mit x1
-;; ex p2 mit x2
-;; x1 != x2
-;; x3 mit estado desconocido und mit son-vecinos x1 x3 und son-vecinos x2 x3
-;; !ex x4 mit estado desconocido und mit son-vecinos p1 x4 und son-vecinos p2 x4
-
-
-; (deffunction vecino-de-particion (?f ?c ?celda ?members)
-;   (bind ?res FALSE)
-;   (if (member$ ?celda ?members) then (return ?res))
-
-;   (switch ?members
-;     (case (celda (fila ?f1) (columna ?c1)) 
-;       then (if (son-vecinos ?f ?c ?f1 ?c1) then (bind ?res TRUE))
-;     )
-;     (case $?x (celda (fila ?f1) (columna ?c1)) $?y 
-;       then (if (son-vecinos ?f ?c ?f1 ?c1) 
-;             then (bind ?res TRUE)
-;             else (bind ?res (vecino-de-particion ?f ?c ?celda ($?x $?y)))
-;             )
-;            )
-;     (default ())
-;   )
-;   (return ?res)
-; )
-
-
-
-
-;; asign-solo-vecino:
-;; particion p
-;; x1 mit estado desconocido und mit vecino de particion x1 p
-;; forall x2 gilt:
-;; x2 nicht desco ODER x1 = x2 ODER x2 kein vecino von p
-
-;; do-for-all-facts scheiße auch mal nutzen!
-
-;;;TODO: das hier läuft noch gar nicht
-;;; Si una particion solo tiene un solo vecino, este vecino tiene que ser asignado:
-;;;
-;;; X
-;;; 3 X La particion que contiene el 3 solo tiene un vecino, el 2. Por eso, el 2 tiene que
-;;; 2   ser asignado, porque el 3 ne sea encerrado.
-; (defrule asignar-solo-vecino
-;   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
-;   ?h2 <- (celda (fila ?f2) (columna ?c2))
-;   ; (particion (miembros $?x ?h2 $?y))
-;   (particion (miembros $?x))
-;   (test (member$ ?h2 $?x))
-;   (test (not (member$ ?h1 $?x))) ;; necessary? weil eig ja desconocido
-;   (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
-;   ; ?h3 <- (celda (fila ?f3) (columna ?c3) (estado ?e))
-;   ; (test (or 
-;   ;         (and (= ?f1 ?f3) (= ?c1 ?c3))
-;   ;         (member$ ?h3 $?x)
-;   ;         ;() No vecino de la particion
-;   ;         (eq ?e eliminado)
-
-;   ;       )
-;   ; )
-;   (forall (celda (fila ?f3) (columna ?c3) (estado ?e))  ;;TODO: erklärbär für dieses forall
-;       (or 
-;           ; (and (= ?f1 ?f3) (= ?c1 ?c3))
-;           (member$ ?h3 $?x)
-;           ;() No vecino de la particion
-;           (eq ?e eliminado)
-
-;         )
-;   )
-;   ;;TODO: es gibt nur ein einziges feld das nachbar von partition ist mit estado desconocido
-;   ;;; sprich: alle anderen nachbarn sind eliminados -> alle nachbarn bestimmen how?
-
-;   ;;;TODO: eventuell doch ein anadir-vecinos einbauen? jz wo dauerschleife gefixed ist
-;   ;;; und ich fkt son-vecinos habe: x in part, y nicht in part, y nicht elim und x,y vecinos -> y in vecino
-;   => 
-;   (modify ?h1 (estado asignado))
-;);;;TODO: eliminert das die ganzen encerrar regeln?
 
 ;;;============================================================================
 ;;; Reglas para imprimir el resultado
@@ -878,6 +660,8 @@
    (printout t "ejemplos.txt :" ?i crlf)
    (run)
    (bind ?datos (readline data))
+   (bind ?parts (contar-particiones)) ;;TODO: remove, just for dev
+   (printout t "Particiones: " ?parts crlf)
    (do-for-fact ((?fct puzle-resuelto)) TRUE ;;;TODO: remove, just for dev
     (bind ?res (+ ?res 1))))
   (printout t "Resueltos: " ?res " / " ?i crlf)
