@@ -241,8 +241,9 @@
   (celda (fila ?f1) (columna ?c1) (valor ?v) (estado asignado))
   ?h <- (celda (fila ?f2) (columna ?c2) (valor ?v) (estado desconocido))
   (test (or 
-          (and (= ?f1 ?f2) (neq ?c1 ?c2))
-          (and (neq ?f1 ?f2) (= ?c1 ?c2))
+          (and (= ?f1 ?f2) (neq ?c1 ?c2)) ; misma fila
+          (and (neq ?f1 ?f2) (= ?c1 ?c2)) ; misma columna
+          ))
         )
   )
   => 
