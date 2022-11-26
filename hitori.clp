@@ -392,7 +392,6 @@
 ;;; Backtracking
 ;;;============================================================================
 
-;;;TODO: iniciar el backtrack con una celda que influye un numero maximo de vecions
 (defrule backtrack-inicio
  (declare (salience -9))
  (not (puzle-resuelto))
@@ -415,12 +414,21 @@
 ;;TODO:  wie kann ich das "zwei schwarze nebeneinander werden enforced" erkennen? -> regeln rallen das nicht
 
 ;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 particion, hay un error.
-(defrule error-mas-que-una-particion
+(defrule error-mas-que-una-particion-al-final
   (declare (salience -9))
   (not (celda (estado desconocido)))
   => 
   (bind ?parts (contar-particiones))
   (if (> ?parts 1) then (assert (hay-error)))
+)
+
+;;; Si todavia hay celdas con estado desconocido, pero tambien una particion que no tiene
+;;; vecinos (porque todos son eliminados -> la particion es una isla), hay un error.
+(defrule celda-encerrada
+  (celda (estado desconocido))
+  (particion (vecinos))
+  => 
+  (assert (hay-error))
 )
 
 ;;; Si descubrimos que hay un error, reasignamos el estado desconocido a cada celda que
