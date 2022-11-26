@@ -679,7 +679,9 @@
    (bind ?parts (contar-particiones)) ;;TODO: remove, just for dev
    (printout t "Particiones: " ?parts crlf)
    (do-for-fact ((?fct puzle-resuelto)) TRUE ;;;TODO: remove, just for dev
-    (bind ?res (+ ?res 1))))
+    (bind ?res (+ ?res 1))
+   )
+  )
   (printout t "Resueltos: " ?res " / " ?i crlf)
   (close data))
 
