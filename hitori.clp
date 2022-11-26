@@ -139,42 +139,28 @@
 ;;; valores y situaciones de las celdas relacionadas.
 
 
-;;; Si un número x esta en una celda y ambos celdas adyacentes en una fila
+;;; Si un número x esta en una celda y ambos celdas adyacentes en una fila o columna
 ;;; contienen el mismo número y != x, entonces x debe ser asignado.
 ;;; 
-;;; Ejemplo:
+;;; Ejemplos:
 ;;;
 ;;;   2 3 2 -> el 3 esta asignado
-;;;
-
-(defrule sandwich-fila    
-  ?h <- (celda (fila ?f) (columna ?c1) (estado desconocido))
-  (celda (fila ?f) (columna ?c2) (valor ?v))
-  (celda (fila ?f) (columna ?c3) (valor ?v))
-  (test (= ?c2 (+ ?c1 1)))
-  (test (= ?c3 (- ?c1 1)))
-  =>
-  (modify ?h (estado asignado))
-)
-
-;;; Si un número x esta en una celda y ambos celdas adyacentes en una columna
-;;; contienen el mismo número y != x, entonces x debe ser asignado.
-;;; 
-;;; Ejemplo:
 ;;;
 ;;;     4
 ;;;     2   -> el 2 esta asignado
 ;;;     4
 ;;;
-
-(defrule sandwich-columna
-  ?h <- (celda (columna ?c) (fila ?f1) (estado desconocido))
-  (celda (columna ?c) (fila ?f2) (valor ?v))
-  (celda (columna ?c) (fila ?f3) (valor ?v))
-  (test (= ?f2 (+ ?f1 1)))
-  (test (= ?f3 (- ?f1 1)))
+(defrule sandwich    
+  ?h <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
+  (celda (fila ?f2) (columna ?c2) (valor ?v))
+  (celda (fila ?f3) (columna ?c3) (valor ?v))
+  (test (or 
+          (and (= ?f1 ?f2) (= ?f1 ?f3) (= ?c2 (+ ?c1 1)) (= ?c3 (- ?c1 1))) ;misma fila
+          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?f2 (+ ?f1 1)) (= ?f3 (- ?f1 1))) ;misma columna
+        )   
+  )
   =>
-  (modify ?h (estado asignado)) 
+  (modify ?h (estado asignado))
 )
 
 ;;; Si hay una pareja de un número x en una fila y hay una otra celda con x en la misma
@@ -340,9 +326,10 @@
 ;;; X       tablero.
 ;;;
 ;;; Asignamos una saliencia a esta regla para que solo se ejecute cuando no hay otra regla
-;;; que podría añadir nuevos vecinos a la particion.
+;;; que podría añadir nuevos vecinos a la particion, pero antes de que el backtracking
+;;; empieza.
 (defrule asignar-unico-vecino
-  (declare (salience -8))
+  (declare (salience -7))
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
   ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
   => 
@@ -368,24 +355,28 @@
 ;;; Backtracking
 ;;;============================================================================
 
-;;;TODO: es fehlt noch eine generelle regel für no islands, nur die rand-regel
-;;; reicht net.
-
 ;;; Template para el backtracking
-; (deftemplate backtracking-step
-;   (slot step-number)
+; (deftemplate paso-backtracking
+;   (slot primero (allowed-values FALSE TRUE) (default FALSE))
 ;   (slot fila)
 ;   (slot columna)
 ; )
 
+; (deffunction hacer-paso-de-backtrack (?f ?c)
+;   (if (any-factp ((?b paso-backtracking)) TRUE) then (assert(paso-backtracking (fila ?f) (columna ?c))))
+; )
+
+
+; ;;TODO: alles mit backtracksteps versehen   (hacer-paso-de-backtrack ?f ?c1)
+
 ; (defrule backtrack-inicio
 ;  (declare (salience -8))
 ;  (not (puzle-resuelto))
-;  (not (backtracking-step (step-number ?)))
+;  (not (paso-backtracking))
 ;  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
 ;  => 
-;  (printout t "backtrack-inicio" crlf)
-;  (assert (backtracking-step (step-number 0) (fila ?f) (columna ?c)))
+;  (printout t "backtrack-inicio: eliminando a " ?f ", " ?c crlf)
+;  (assert (paso-backtracking (primero TRUE) (fila ?f) (columna ?c)))
 ;  (modify ?h (estado eliminado))
 ; )
 
