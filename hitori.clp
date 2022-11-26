@@ -235,21 +235,16 @@
 )
 
 ;;; Si una celda que contiene x esta amarcada como asignado, entonces cada celda 
-;;; en la misma fila que también contiene x, tiene que estar eliminada.
+;;; en la misma fila o columna que también contiene x, tiene que estar eliminada.
 ;;;
-(defrule eliminar-dobles-fila
-  (celda (fila ?f) (columna ?c1) (valor ?v) (estado asignado))
-  ?h <- (celda (fila ?f) (columna ?c2&~?c1) (valor ?v) (estado desconocido))
-  => 
-  (modify ?h (estado eliminado))
-)
-
-;;; Si una celda que contiene x esta amarcada como asignado, entonces cada celda 
-;;; en la misma columna que también contiene x, tiene que estar eliminada.
-;;;
-(defrule eliminar-dobles-columna
-  (celda (fila ?f1) (columna ?c) (valor ?v) (estado asignado))
-  ?h <- (celda (fila ?f2&~?f1) (columna ?c) (valor ?v) (estado desconocido))
+(defrule eliminar-dobles
+  (celda (fila ?f1) (columna ?c1) (valor ?v) (estado asignado))
+  ?h <- (celda (fila ?f2) (columna ?c2) (valor ?v) (estado desconocido))
+  (test (or 
+          (and (= ?f1 ?f2) (neq ?c1 ?c2))
+          (and (neq ?f1 ?f2) (= ?c1 ?c2))
+        )
+  )
   => 
   (modify ?h (estado eliminado))
 )
@@ -575,7 +570,7 @@
 
 ;;; TODO: just for dev
 (defrule marcar-como-resuelto
-  (declare (salience -11))
+  (declare (salience -9))
   (not (celda (estado desconocido)))
   => 
   (assert (puzle-resuelto))
@@ -584,6 +579,7 @@
 
 (defrule imprime-solucion
   (declare (salience -10))
+  ; (not (puzle-resuelto))
   =>
   (printout t " Original           Solución " crlf)  
   (printout t "+---------+        +---------+" crlf)
