@@ -243,7 +243,6 @@
   (test (or 
           (and (= ?f1 ?f2) (neq ?c1 ?c2)) ; misma fila
           (and (neq ?f1 ?f2) (= ?c1 ?c2)) ; misma columna
-          ))
         )
   )
   => 
