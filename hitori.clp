@@ -434,9 +434,6 @@
  (retract ?b)
 )
 
-(deffunction eliminar-particiones ()
-
-)
 ;;; Si descubrimos que hay un error y que solo queda el primero paso de backtrack a deshacer,
 ;;; asignamos el estado asignado a la celda que iniciaba el backtrack. Esto es porque cuando
 ;;; empezamos el backtrack, la primera celda recibi el estado eliminado. Pero eso ha provocado
