@@ -392,6 +392,8 @@
 ;;; Backtracking
 ;;;============================================================================
 
+;;; Empieza el backtracking, si no hay otra regla que se activa, pero que el puzle
+;;; todavia no esta resuelto.
 (defrule backtrack-inicio
  (declare (salience -9))
  (not (puzle-resuelto))
@@ -402,6 +404,7 @@
  (modify ?h (estado eliminado))
 )
 
+;;; Cuenta el nombre de particiones que hay.
 (deffunction contar-particiones ()
   (bind ?res 0)
   (do-for-all-facts ((?p particion)) TRUE
@@ -409,8 +412,6 @@
   )
   (return ?res)
 )
-
-;;TODO:  wie kann ich das "zwei schwarze nebeneinander werden enforced" erkennen? -> regeln rallen das nicht
 
 ;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 particion, hay un error.
 (defrule error-mas-que-una-particion-al-final
@@ -500,7 +501,6 @@
 
 (defrule imprime-solucion
   (declare (salience -10))
-  ; (not (puzle-resuelto))
   =>
   (printout t " Original           Solución " crlf)  
   (printout t "+---------+        +---------+" crlf)
