@@ -274,99 +274,115 @@
   (modify ?h (estado asignado))
 )
 
-;;;TODO: this rule does not help at all
-; (defrule m-pair-col
-;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f1) (columna ?c2) (valor ?v2))
-;   (test(= ?c2 (+ ?c1 1)))
-;   (celda (fila ?f2) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
-;   (test(neq ?f1 ?f2))
-;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
-;   (test (or 
-;           (and (= ?c1 ?c3) (eq ?v1 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
-;           (and (= ?c2 ?c3) (eq ?v2 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
-;         ))
-;   => 
-;   (printout t "m-pair-col hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
+;;;============================================================================
+;;; Particiones
+;;;============================================================================
+(
+  deftemplate particion
+  (multislot miembros) ;;; Aqui se guardan las celdas que forman parte de la particion
+  (multislot vecinos) ;;; Aqui se guardan las celdas que son vecinos de la particion
+)
 
-; (defrule m-pair-fila
-;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c1) (valor ?v2))
-;   (test(= ?f2 (+ ?f1 1)))
-;   (celda (fila ?f1) (columna ?c2) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
-;   (test(neq ?c1 ?c2))
-;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
-;   (test (or 
-;           (and (= ?f1 ?f3) (eq ?v1 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
-;           (and (= ?f2 ?f3) (eq ?v2 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
-;         ))
-;   => 
-;   (printout t "m-pair-fila hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
+;;; Determina si dos celdas son vecinos o no
+(deffunction son-vecinos (?f1 ?c1 ?f2 ?c2)
+(return (or 
+        (and (= ?f2 (- ?f1 1)) (= ?c1 ?c2)) ;vecino arriba
+        (and (= ?f2 (+ ?f1 1)) (= ?c1 ?c2)) ;vecino abajo
+        (and (= ?f1 ?f2) (= ?c2 (+ ?c1 1))) ;vecino derecho
+        (and (= ?f1 ?f2) (= ?c2 (- ?c1 1))) ;vecino izquierdo
+        ))
+)
 
-;;; TODO: those roles do not help in solving
-; ;;; Si dos dobles son en "sandwich" en una fila/columna, todos los singulos de la 
-; ;;; misma fila/columna tienen que estar eliminados.
-; ;;;
-; ;;; 2 3 3 2 1 5 6 3 4 2
-; ;;;               ^   ^ (el singulo 3 y 2 ambos tienen que estar eliminados)
-; ;;;
+;;; Devuelve todas las celdas que son vecinos de la celda con fila ?f y columna ?c
+(deffunction devolver-vecinos (?f ?c)
+  (return (find-all-facts ((?h celda)) (son-vecinos ?f ?c ?h:fila ?h:columna)))
+)
 
-; (defrule isolacion-flancada-fila-1
-;   (celda (fila ?f) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f) (columna ?c2) (valor ?v2))
-;   (celda (fila ?f) (columna ?c3) (valor ?v2))
-;   (celda (fila ?f) (columna ?c4) (valor ?v1))
-;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
-;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v1))
-;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
-;   => 
-;   (printout t "flancada 1 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-; (defrule isolacion-flancada-fila-2
-;   (celda (fila ?f) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f) (columna ?c2) (valor ?v2))
-;   (celda (fila ?f) (columna ?c3) (valor ?v2))
-;   (celda (fila ?f) (columna ?c4) (valor ?v1))
-;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
-;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v2))
-;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
-;   => 
-;   (printout t "flancada 2 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-; (defrule isolacion-flancada-columna-1
-;   (celda (fila ?f1) (columna ?c) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c) (valor ?v2))
-;   (celda (fila ?f3) (columna ?c) (valor ?v2))
-;   (celda (fila ?f4) (columna ?c) (valor ?v1))
-;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
-;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v1))
-;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
-;   => 
-;   (printout t "flancada-col 1 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-; (defrule isolacion-flancada-columna-2
-;   (celda (fila ?f1) (columna ?c) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c) (valor ?v2))
-;   (celda (fila ?f3) (columna ?c) (valor ?v2))
-;   (celda (fila ?f4) (columna ?c) (valor ?v1))
-;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
-;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v2))
-;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
-;   => 
-;   (printout t "flancada-col 2 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
+;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
+;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
+;;; que solo contiene la celda que acaba de ser asignada.
+(defrule añadir-asignado-a-particion-existente
+  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
+  ?h2 <- (celda (fila ?f2) (columna ?c2) (estado asignado))
+  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  (not (particion (miembros $?a ?h2 $?b)))
+  ?p <- (particion (miembros $?x ?h1 $?y))
+  => 
+  (modify ?p (miembros $?x ?h1 ?h2 $?y))
+)
 
-;;;;;;;;;;;;;;;;;;;;;;;; BACKTRACKING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defrule añadir-asignado-a-particion-nueva
+  ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
+  (not (particion (miembros $?x ?h $?y)))
+  => 
+  (assert (particion (miembros ?h)))
+)
+
+;;; Cada celda que esta desconocida y que esta vecino de una celda que esta parte de
+;;; una particion, se agrega al conjunto de vecinos de la particion
+(defrule añadir-vecino-desconocido
+  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
+  ?h2 <- (celda (fila ?f2) (columna ?c2))
+  ?p <- (particion (miembros $? ?h2 $?) (vecinos $?v))
+  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  (test (not (member$ ?h1 ?v)))
+  => 
+  (modify ?p (vecinos $?v ?h1))
+)
+
+;;; Si una celda h esta eliminada y es vecino de una celda que esta parte de una particion,
+;;; la celda h tiene que quitarse del conjunto de vecinos de la particion
+(defrule quitar-vecinos-eliminados
+  ?h <- (celda (estado eliminado))
+  ?p <- (particion (vecinos $?a ?h $?b))
+  => 
+  (modify ?p (vecinos $?a $?b))
+)
+
+;;; Si un vecino ha estado asignado y ahora forma parte de los miembros de una particion,
+;;; entonces se tiene que quitar de los vecinos de la particion
+(defrule quitar-vecinos-asignados
+  ?p <- (particion (miembros $? ?v $?) (vecinos $?a ?v $?b))
+  => 
+  (modify ?p (vecinos $?a $?b))
+)
+
+;;; Si una particion solo tiene a una sola celda desconocida como vecino, entonces esa celda
+;;; tiene que estar asignada, porque la particion no se divida del resto del tablero.
+;;;
+;;; Ejemplo:
+;;;
+;;; X
+;;; 3 ?     La particion (2,3) solo tiene a un vecino desconocido, el resto esta eliminado.
+;;; 2 X     Este vecino tiene que ser asignado, porque el (2,3) no sea dividido del resto del
+;;; X       tablero.
+;;;
+(defrule asignar-unico-vecino
+  (declare (salience -8))
+  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
+  ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
+  => 
+  (modify ?h1 (estado asignado))
+)
+
+;;; Cuando una particion tiene como vecino un miembro de una otra particion, las particiones
+;;; se unen y una de las dos particiones se elimina.
+(defrule unir-dos-particiones
+  ?h1 <- (celda (fila ?f1) (columna ?c1))
+  ?h2 <- (celda (fila ?f2) (columna ?c2))
+  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  ?p1 <- (particion (miembros $?x1 ?h1 $?y1))
+  ?p2 <- (particion (miembros $?x2 ?h2 $?y2))
+  (test (neq ?p1 ?p2))
+  =>
+  (modify ?p1 (miembros $?x1 ?h1 $?y1 $?x2 ?h2 $?y2))
+  (retract ?p2)
+)
+
+
+;;;============================================================================
+;;; Backtracking
+;;;============================================================================
 
 ;;;TODO: es fehlt noch eine generelle regel für no islands, nur die rand-regel
 ;;; reicht net.
@@ -438,100 +454,105 @@
 ;  (assert (undo-backtrack))
 ; )
 
-;;;;;;;;;;;;;;;;;;;;;;;; BACKTRACKING ENDE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(deftemplate particion
-  (multislot miembros) ;;; Aqui se guardan las celdas que forman parte de la particion
-  (multislot vecinos) ;;; Aqui se guardan las celdas que son vecinos de la particion
-)
+;;;============================================================================
+;;; MÜLLEIMER !?
+;;;============================================================================
 
-;;; Determina si dos celdas son vecinos o no
-(deffunction son-vecinos (?f1 ?c1 ?f2 ?c2)
-(return (or 
-        (and (= ?f2 (- ?f1 1)) (= ?c1 ?c2)) ;vecino arriba
-        (and (= ?f2 (+ ?f1 1)) (= ?c1 ?c2)) ;vecino abajo
-        (and (= ?f1 ?f2) (= ?c2 (+ ?c1 1))) ;vecino derecho
-        (and (= ?f1 ?f2) (= ?c2 (- ?c1 1))) ;vecino izquierdo
-        ))
-)
+; (defrule m-pair-col
+;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f1) (columna ?c2) (valor ?v2))
+;   (test(= ?c2 (+ ?c1 1)))
+;   (celda (fila ?f2) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
+;   (test(neq ?f1 ?f2))
+;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
+;   (test (or 
+;           (and (= ?c1 ?c3) (eq ?v1 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
+;           (and (= ?c2 ?c3) (eq ?v2 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
+;         ))
+;   => 
+;   (printout t "m-pair-col hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
 
-(deffunction devolver-vecinos (?f ?c) ;;TODO: erklärbär hierzu
-  (return (find-all-facts ((?h celda)) (son-vecinos ?f ?c ?h:fila ?h:columna)))
-)
+; (defrule m-pair-fila
+;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c1) (valor ?v2))
+;   (test(= ?f2 (+ ?f1 1)))
+;   (celda (fila ?f1) (columna ?c2) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
+;   (test(neq ?c1 ?c2))
+;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
+;   (test (or 
+;           (and (= ?f1 ?f3) (eq ?v1 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
+;           (and (= ?f2 ?f3) (eq ?v2 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
+;         ))
+;   => 
+;   (printout t "m-pair-fila hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
 
-;;; Cada celda que esta desconocida y que esta vecino de una celda que esta parte de
-;;; una particion, se agrega al conjunto de vecinos de la particion
-(defrule añadir-vecino-desconocido
-  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
-  ?h2 <- (celda (fila ?f2) (columna ?c2))
-  ?p <- (particion (miembros $? ?h2 $?) (vecinos $?v))
-  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
-  (test (not (member$ ?h1 ?v)))
-  => 
-  (modify ?p (vecinos $?v ?h1))
-)
+; ; ;;; Si dos dobles son en "sandwich" en una fila/columna, todos los singulos de la 
+; ; ;;; misma fila/columna tienen que estar eliminados.
+; ; ;;;
+; ; ;;; 2 3 3 2 1 5 6 3 4 2
+; ; ;;;               ^   ^ (el singulo 3 y 2 ambos tienen que estar eliminados)
+; ; ;;;
 
-;;; Si una celda h esta eliminada y es vecino de una celda que esta parte de una particion,
-;;; la celda h tiene que quitarse del conjunto de vecinos de la particion
-(defrule quitar-vecinos-eliminados
-  ?h <- (celda (estado eliminado))
-  ?p <- (particion (vecinos $?a ?h $?b))
-  => 
-  (modify ?p (vecinos $?a $?b))
-)
+; (defrule isolacion-flancada-fila-1
+;   (celda (fila ?f) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f) (columna ?c2) (valor ?v2))
+;   (celda (fila ?f) (columna ?c3) (valor ?v2))
+;   (celda (fila ?f) (columna ?c4) (valor ?v1))
+;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
+;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v1))
+;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
+;   => 
+;   (printout t "flancada 1 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+; (defrule isolacion-flancada-fila-2
+;   (celda (fila ?f) (columna ?c1) (valor ?v1))
+;   (celda (fila ?f) (columna ?c2) (valor ?v2))
+;   (celda (fila ?f) (columna ?c3) (valor ?v2))
+;   (celda (fila ?f) (columna ?c4) (valor ?v1))
+;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
+;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v2))
+;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
+;   => 
+;   (printout t "flancada 2 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+; (defrule isolacion-flancada-columna-1
+;   (celda (fila ?f1) (columna ?c) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c) (valor ?v2))
+;   (celda (fila ?f3) (columna ?c) (valor ?v2))
+;   (celda (fila ?f4) (columna ?c) (valor ?v1))
+;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
+;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v1))
+;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
+;   => 
+;   (printout t "flancada-col 1 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
+; (defrule isolacion-flancada-columna-2
+;   (celda (fila ?f1) (columna ?c) (valor ?v1))
+;   (celda (fila ?f2) (columna ?c) (valor ?v2))
+;   (celda (fila ?f3) (columna ?c) (valor ?v2))
+;   (celda (fila ?f4) (columna ?c) (valor ?v1))
+;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
+;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v2))
+;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
+;   => 
+;   (printout t "flancada-col 2 hecha" crlf)
+;   (modify ?h (estado eliminado))
+; )
 
-;;; Si un vecino ha estado asignado y ahora forma parte de los miembros de una particion,
-;;; entonces se tiene que quitar de los vecinos de la particion
-(defrule quitar-vecinos-asignados
-  ?p <- (particion (miembros $? ?v $?) (vecinos $?a ?v $?b))
-  => 
-  (modify ?p (vecinos $?a $?b))
-)
+;;;;;;;;;; MÜLLEIMER ENDE ;;;;;;;;;;
 
-;;; Si una particion solo tiene a una sola celda desconocida como vecino, entonces esa celda
-;;; tiene que estar asignada, porque la particion no se divide del resto del tablero
-(defrule asignar-unico-vecino
-  (declare (salience -8))
-  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
-  ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
-  => 
-  (modify ?h1 (estado asignado))
-)
 
-;;; Cuando una particion tiene como vecino un miembro de una otra particion, las particiones
-;;; se unen y una de las dos particiones se elimina.
-(defrule unir-dos-particiones
-  ?h1 <- (celda (fila ?f1) (columna ?c1))
-  ?h2 <- (celda (fila ?f2) (columna ?c2))
-  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
-  ?p1 <- (particion (miembros $?x1 ?h1 $?y1))
-  ?p2 <- (particion (miembros $?x2 ?h2 $?y2))
-  (test (neq ?p1 ?p2))
-  =>
-  (modify ?p1 (miembros $?x1 ?h1 $?y1 $?x2 ?h2 $?y2))
-  (retract ?p2)
-)
-
-;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
-;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
-;;; que solo contiene la celda que acaba de ser asignada.
-(defrule añadir-asignado-a-particion-existente
-  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
-  ?h2 <- (celda (fila ?f2) (columna ?c2) (estado asignado))
-  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
-  (not (particion (miembros $?a ?h2 $?b)))
-  ?p <- (particion (miembros $?x ?h1 $?y))
-  => 
-  (modify ?p (miembros $?x ?h1 ?h2 $?y))
-)
-
-(defrule añadir-asignado-a-particion-nueva
-  ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
-  (not (particion (miembros $?x ?h $?y)))
-  => 
-  (assert (particion (miembros ?h)))
-)
 
 ;;;============================================================================
 ;;; Reglas para imprimir el resultado
