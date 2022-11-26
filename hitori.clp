@@ -130,6 +130,23 @@
 	(default desconocido)))
 
 ;;;============================================================================
+;;; Backtracking
+;;;============================================================================
+
+;;; Template para el backtracking
+(deftemplate paso-backtracking
+  (slot primero (allowed-values FALSE TRUE) (default FALSE))
+  (slot fila)
+  (slot columna)
+)
+
+;;; Checkear si estamos haciendo backtracking. Si no, no hacemos nada, pero si estamos haciendo
+;;; backtracking, añadir paso de backtracking a los hechos.
+(deffunction hacer-paso-de-backtrack (?f ?c)
+  (if (any-factp ((?b paso-backtracking)) TRUE) then (assert(paso-backtracking (fila ?f) (columna ?c))))
+)
+
+;;;============================================================================
 ;;; Estrategias de resoluciÃ³n
 ;;;============================================================================
 
@@ -150,7 +167,9 @@
 ;;;     2   -> el 2 esta asignado
 ;;;     4
 ;;;
-(defrule sandwich    
+(defrule sandwich  
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
   (celda (fila ?f2) (columna ?c2) (valor ?v))
   (celda (fila ?f3) (columna ?c3) (valor ?v))
@@ -160,6 +179,7 @@
         )   
   )
   =>
+  (hacer-paso-de-backtrack ?f1 ?c1)
   (modify ?h (estado asignado))
 )
 
@@ -181,6 +201,8 @@
 ;;;   8 
 ;;;
 (defrule pareja-y-soltero
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h <- (celda (fila ?f1) (columna ?c1) (valor ?v) (estado desconocido))
   (celda (fila ?f2) (columna ?c2) (valor ?v))
   (celda (fila ?f3) (columna ?c3) (valor ?v))
@@ -192,6 +214,7 @@
         )
   )
   => 
+  (hacer-paso-de-backtrack ?f1 ?c1)
   (modify ?h (estado eliminado)) 
 )
 
@@ -199,6 +222,8 @@
 ;;; esta asignada, porque no puede haber dos celdas adyacentes eliminadas.
 ;;;
 (defrule asignar-entorno-de-eliminado
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   (celda (fila ?f1) (columna ?c1) (estado eliminado))
   ?h <- (celda (fila ?f2) (columna ?c2) (estado desconocido))
   (test (or (and (= ?f2 (+ ?f1 1)) (= ?c1 ?c2)) ;celda abajo
@@ -206,6 +231,7 @@
            (and (= ?c2 (+ ?c1 1)) (= ?f1 ?f2)) ;celda derecha
            (and (= ?c2 (- ?c1 1)) (= ?f1 ?f2)))) ;celda izquierda
   => 
+  (hacer-paso-de-backtrack ?f2 ?c2)
   (modify ?h (estado asignado)) 
 )
 
@@ -213,6 +239,8 @@
 ;;; en la misma fila o columna que también contiene x, tiene que estar eliminada.
 ;;;
 (defrule eliminar-dobles
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   (celda (fila ?f1) (columna ?c1) (valor ?v) (estado asignado))
   ?h <- (celda (fila ?f2) (columna ?c2) (valor ?v) (estado desconocido))
   (test (or 
@@ -221,6 +249,7 @@
         )
   )
   => 
+  (hacer-paso-de-backtrack ?f2 ?c2)
   (modify ?h (estado eliminado))
 )
 
@@ -229,10 +258,13 @@
 ;;; celdas con un x son eliminadas, entonces esta celda debe estar asignada. 
 ;;; No hay nada que podría forzarla a estar eliminada.
 (defrule asignar-solteros
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h <- (celda (fila ?f) (columna ?c) (valor ?v) (estado desconocido))
   (not (celda (fila ?f) (columna ?c1&~?c) (valor ?v) (estado ?e&~eliminado)))
   (not (celda (fila ?f1&~?f) (columna ?c) (valor ?v) (estado ?e&~eliminado)))
   => 
+  (hacer-paso-de-backtrack ?f ?c)
   (modify ?h (estado asignado))
 )
 
@@ -259,6 +291,8 @@
 ;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
 ;;; que solo contiene la celda que acaba de ser asignada.
 (defrule añadir-asignado-a-particion-existente
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
   ?h2 <- (celda (fila ?f2) (columna ?c2) (estado asignado))
   (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
@@ -269,6 +303,8 @@
 )
 
 (defrule añadir-asignado-a-particion-nueva
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
   (not (particion (miembros $?x ?h $?y)))
   => 
@@ -278,6 +314,8 @@
 ;;; Cada celda que esta desconocida y que esta vecino de una celda que esta parte de
 ;;; una particion, se agrega al conjunto de vecinos de la particion
 (defrule añadir-vecino-desconocido
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
   ?h2 <- (celda (fila ?f2) (columna ?c2))
   ?p <- (particion (miembros $? ?h2 $?) (vecinos $?v))
@@ -290,6 +328,8 @@
 ;;; Si una celda h esta eliminada y es vecino de una celda que esta parte de una particion,
 ;;; la celda h tiene que quitarse del conjunto de vecinos de la particion
 (defrule quitar-vecinos-eliminados
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h <- (celda (estado eliminado))
   ?p <- (particion (vecinos $?a ?h $?b))
   => 
@@ -299,6 +339,8 @@
 ;;; Si un vecino ha estado asignado y ahora forma parte de los miembros de una particion,
 ;;; entonces se tiene que quitar de los vecinos de la particion
 (defrule quitar-vecinos-asignados
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?p <- (particion (miembros $? ?v $?) (vecinos $?a ?v $?b))
   => 
   (modify ?p (vecinos $?a $?b))
@@ -319,15 +361,20 @@
 ;;; empieza.
 (defrule asignar-unico-vecino
   (declare (salience -7))
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
   ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
   => 
+  (hacer-paso-de-backtrack ?f1 ?c1)
   (modify ?h1 (estado asignado))
 )
 
 ;;; Cuando una particion tiene como vecino un miembro de una otra particion, las particiones
 ;;; se unen y una de las dos particiones se elimina.
 (defrule unir-dos-particiones
+  ; Tenemos que poner eso, para asegurarnos, que no estamos deshaciendo una secuencia de backtracking 
+  (not (hay-error)) 
   ?h1 <- (celda (fila ?f1) (columna ?c1))
   ?h2 <- (celda (fila ?f2) (columna ?c2))
   (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
@@ -344,31 +391,54 @@
 ;;; Backtracking
 ;;;============================================================================
 
-;;; Template para el backtracking
-; (deftemplate paso-backtracking
-;   (slot primero (allowed-values FALSE TRUE) (default FALSE))
-;   (slot fila)
-;   (slot columna)
-; )
+;;;TODO: iniciar el backtrack con una celda que influye un numero maximo de vecions
+(defrule backtrack-inicio
+ (declare (salience -8))
+ (not (puzle-resuelto))
+ (not (paso-backtracking))
+ ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
+ => 
+ (printout t "backtrack-inicio: eliminando a " ?f ", " ?c crlf)
+ (assert (paso-backtracking (primero TRUE) (fila ?f) (columna ?c)))
+ (modify ?h (estado eliminado))
+)
 
-; (deffunction hacer-paso-de-backtrack (?f ?c)
-;   (if (any-factp ((?b paso-backtracking)) TRUE) then (assert(paso-backtracking (fila ?f) (columna ?c))))
-; )
+;;error: alle assigned, aber mehr als 1 partition
+;; wie kann ich das "zwei schwarze nebeneinander werden enforced" erkennen? -> regeln rallen das nicht
 
-
-; ;;TODO: alles mit backtracksteps versehen   (hacer-paso-de-backtrack ?f ?c1)
-
-; (defrule backtrack-inicio
-;  (declare (salience -8))
-;  (not (puzle-resuelto))
-;  (not (paso-backtracking))
-;  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
+; (defrule detectar-error
+;   FALSE
 ;  => 
-;  (printout t "backtrack-inicio: eliminando a " ?f ", " ?c crlf)
-;  (assert (paso-backtracking (primero TRUE) (fila ?f) (columna ?c)))
-;  (modify ?h (estado eliminado))
+;  (assert (hay-error))
 ; )
 
+;;; Si descubrimos que hay un error, reasignamos el estado desconocido a cada celda que
+;;; ha estado cambiada durante el backtrack.
+(defrule deshacer-paso-de-backtrack
+ (hay-error)
+ ?b <- (paso-backtracking (primero FALSE) (fila ?f) (columna ?c))
+ ?h <- (celda (fila ?f) (columna ?c))
+ => 
+ (modify ?h (estado desconocido))
+ (retract ?b)
+)
+
+;;; Si descubrimos que hay un error y que solo queda el primero paso de backtrack a deshacer,
+;;; asignamos el estado asignado a la celda que iniciaba el backtrack. Esto es porque cuando
+;;; empezamos el backtrack, la primera celda recibi el estado eliminado. Pero eso ha provocado
+;;; un error, por eso sabemos que la celda tiene que ser asignada.
+(defrule deshacer-primer-paso-de-backtrack
+ ?e <- (hay-error)
+ (not (paso-backtracking (primero FALSE)))
+ ?b <- (paso-backtracking (primero TRUE) (fila ?f) (columna ?c))
+ ?h <- (celda (fila ?f) (columna ?c))
+ => 
+ (modify ?h (estado asignado)) 
+ (retract ?b)
+ (retract ?e)
+)
+
+;;;TODO: no necessario?
 ; (defrule backtrack-paso
 ;  (declare (salience -8))
 ;  (not (puzle-resuelto))
@@ -381,17 +451,7 @@
 ;  (modify ?h (estado eliminado))
 ; )
 
-; (defrule undo-backtrack 
-;  (declare (salience -8))
-;  (not (puzle-resuelto))
-;  (undo-backtrack)
-;  ?s <- (backtracking-step (step-number ?n) (fila ?f) (columna ?c))
-;  ?h <- (celda (fila ?f) (columna ?c))
-;  => 
-;  (printout t "undo-backtrack" crlf)
-;  (retract ?s)
-;  (modify ?h (estado desconocido))
-; )
+
 
 ; (defrule undo-first-backtrack 
 ;  (declare (salience -9))
