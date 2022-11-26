@@ -461,6 +461,8 @@
 ;   (modify ?h (estado eliminado))
 ; )
 
+;;;;;;;;;;;;;;;;;;;;;;;; BACKTRACKING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;;TODO: es fehlt noch eine generelle regel für no islands, nur die rand-regel
 ;;; reicht net.
 
@@ -531,11 +533,15 @@
 ;  (assert (undo-backtrack))
 ; )
 
+;;;;;;;;;;;;;;;;;;;;;;;; BACKTRACKING ENDE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (deftemplate particion
   (multislot miembros) ;;; Aqui se guardan las celdas que forman parte de la particion
+  (multislot vecinos) ;;; Aqui se guardan las celdas que son vecinos de la particion
 )
 
-;;; Determina si dos celda son vecinos o no
+;;; Determina si dos celdas son vecinos o no
 (deffunction son-vecinos (?f1 ?c1 ?f2 ?c2)
 (return (or 
         (and (= ?f2 (- ?f1 1)) (= ?c1 ?c2)) ;vecino arriba
@@ -544,6 +550,86 @@
         (and (= ?f1 ?f2) (= ?c2 (- ?c1 1))) ;vecino izquierdo
         ))
 )
+
+(deffunction devolver-vecinos (?f ?c) ;;TODO: erklärbär hierzu
+  (return (find-all-facts ((?h celda)) (son-vecinos ?f ?c ?h:fila ?h:columna)))
+)
+
+;;; Cada celda que esta desconocida y que esta vecino de una celda que esta parte de
+;;; una particion, se agrega al conjunto de vecinos de la particion
+(defrule añadir-vecino-desconocido
+  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
+  ?h2 <- (celda (fila ?f2) (columna ?c2))
+  ?p <- (particion (miembros $? ?h2 $?) (vecinos $?v))
+  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  (test (not (member$ ?h1 ?v)))
+  => 
+  (modify ?p (vecinos $?v ?h1))
+)
+
+;;; Si una particion solo tiene a una sola celda desconocida como vecino, entonces esa celda
+;;; tiene que estar asignada, porque la particion no se divide del resto del tablero
+(defrule asignar-unico-vecino
+  (declare (salience -8))
+  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
+  ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
+  => 
+  (modify ?h1 (estado asignado))
+)
+
+
+;; -> vecino-de-particion ?f ?c ?miembros jetzt mit devolver-vecinos möglich???
+;; baue array von vecinos
+;; particion-vecinos = []
+;; tmp-miembros = miebmros
+;; while (tmp-miembros not empty)
+;; elem = nth 1 miembros
+;; vecinos = devolver-vecinos elem 
+;; add vecinos to particion-vecinos (w/o duplicates)
+;; do-for-all-facts (celda ?c ?f) (if (c f in vecinos UND celda in miembros) -> c f aus vecinos wieder raus )
+;; tmp-miembros = tmp-miembros - elem
+;; end while
+;; if (particion-vecinos contains ?f ?c) then true else false
+; (deffunction devolver-vecinos-de-particion (?miembros)
+;   (bind ?particion-vecinos (create$))
+;   (bind ?tmp-miembros ?miembros)
+;   (bind ?i (length$ ?tmp-miembros))
+;   (while (> ?i 0)
+;     (bind ?elem (first$ ?tmp-miembros))
+;     ; (bind ?elem (first$ ?tmp-miembros))
+;     (bind ?vecinos (devolver-vecinos ?elem:fila ?elem:columna)) 
+;     (bind ?particion-vecinos (insert$ ?vecinos 1 ?particion-vecinos));;TODO: w/o duplicates
+;     (bind ?a-quitar (find-all-facts ((?c celda)) (and (member$ ?c ?vecinos) (member$ ?c ?miembros))))
+;     (bind ?particion-vecinos (delete-member$ ?particion-vecinos ?a-quitar))
+;     ; (do-for-all-facts ((?c celda)) 
+;     ;   (if (and (member$ ?c ?vecinos) (member$ ?c ?miembros))
+;     ;     then (bind ?particion-vecinos (delete-member$ ?particion-vecinos ?c))
+;     ;   )
+;     ; )
+;     (bind ?tmp-miembros (delete-member$ ?tmp-miembros ?elem))
+;     (bind ?i (length$ ?tmp-miembros))
+;   )
+;   (return ?particion-vecinos)
+; )
+
+; (deffunction esta-celda-de-lado-de-particion (?celda)
+;   (bind ?tiene-vecinos-fuera-de-particion FALSE)
+;   (return ?tiene-vecinos-fuera-de-particion)
+; (do-for-fact ((?fct puzle-resuelto)) TRUE
+;     (bind ?res (+ ?res 1)))
+;   (do-for-fact ((?fct particion (miembros ($? ?h $?)))) ())
+; )
+; (deffunction esta-vecino-de-particion ?f ?c ?miembros
+;   (bind ?vecinos-de-particion (create$))
+;   (bind ?tmp-miembros ?miembros)
+;   (bind ?i (length$ ?tmp-miembros))
+;   (while (> ?i 0)
+;     (bind ?elem (first$ ?tmp-miembros))
+;     (bind ?vecinos (devolver-vecinos (nth$ 1 ?elem) (nth$ 2 ?elem)))
+;     (bind ?vecinos-de-particion (union$ ?vecinos-de-particion ?vecinos))
+;     (bind ?tmp-miembros (remove$ ?tmp-miembros ?elem))
+;   )
+; )
 
 ;;; No queremos dobles en los miembros
 (defrule quitar-dobles-de-miembros-de-particion
@@ -566,9 +652,9 @@
   (retract ?p2)
 )
 
-; ;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
-; ;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
-; ;;; que solo contiene la celda que acaba de ser asignada.
+;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
+;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
+;;; que solo contiene la celda que acaba de ser asignada.
 (defrule añadir-asignado-a-particion-existente
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
   ?h2 <- (celda (fila ?f2) (columna ?c2) (estado asignado))
@@ -586,6 +672,45 @@
   (assert (particion (miembros ?h)))
 )
 
+;;TODO: IDEE? -> funzt net.
+;; ex p1 mit x1
+;; ex p2 mit x2
+;; x1 != x2
+;; x3 mit estado desconocido und mit son-vecinos x1 x3 und son-vecinos x2 x3
+;; !ex x4 mit estado desconocido und mit son-vecinos p1 x4 und son-vecinos p2 x4
+
+
+; (deffunction vecino-de-particion (?f ?c ?celda ?members)
+;   (bind ?res FALSE)
+;   (if (member$ ?celda ?members) then (return ?res))
+
+;   (switch ?members
+;     (case (celda (fila ?f1) (columna ?c1)) 
+;       then (if (son-vecinos ?f ?c ?f1 ?c1) then (bind ?res TRUE))
+;     )
+;     (case $?x (celda (fila ?f1) (columna ?c1)) $?y 
+;       then (if (son-vecinos ?f ?c ?f1 ?c1) 
+;             then (bind ?res TRUE)
+;             else (bind ?res (vecino-de-particion ?f ?c ?celda ($?x $?y)))
+;             )
+;            )
+;     (default ())
+;   )
+;   (return ?res)
+; )
+
+
+
+
+;; asign-solo-vecino:
+;; particion p
+;; x1 mit estado desconocido und mit vecino de particion x1 p
+;; forall x2 gilt:
+;; x2 nicht desco ODER x1 = x2 ODER x2 kein vecino von p
+
+;; do-for-all-facts scheiße auch mal nutzen!
+
+;;;TODO: das hier läuft noch gar nicht
 ;;; Si una particion solo tiene un solo vecino, este vecino tiene que ser asignado:
 ;;;
 ;;; X
@@ -594,8 +719,29 @@
 ; (defrule asignar-solo-vecino
 ;   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
 ;   ?h2 <- (celda (fila ?f2) (columna ?c2))
-;   (particion (miembros $? ?h2 $?))
+;   ; (particion (miembros $?x ?h2 $?y))
+;   (particion (miembros $?x))
+;   (test (member$ ?h2 $?x))
+;   (test (not (member$ ?h1 $?x))) ;; necessary? weil eig ja desconocido
 ;   (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+;   ; ?h3 <- (celda (fila ?f3) (columna ?c3) (estado ?e))
+;   ; (test (or 
+;   ;         (and (= ?f1 ?f3) (= ?c1 ?c3))
+;   ;         (member$ ?h3 $?x)
+;   ;         ;() No vecino de la particion
+;   ;         (eq ?e eliminado)
+
+;   ;       )
+;   ; )
+;   (forall (celda (fila ?f3) (columna ?c3) (estado ?e))  ;;TODO: erklärbär für dieses forall
+;       (or 
+;           ; (and (= ?f1 ?f3) (= ?c1 ?c3))
+;           (member$ ?h3 $?x)
+;           ;() No vecino de la particion
+;           (eq ?e eliminado)
+
+;         )
+;   )
 ;   ;;TODO: es gibt nur ein einziges feld das nachbar von partition ist mit estado desconocido
 ;   ;;; sprich: alle anderen nachbarn sind eliminados -> alle nachbarn bestimmen how?
 
@@ -603,7 +749,7 @@
 ;   ;;; und ich fkt son-vecinos habe: x in part, y nicht in part, y nicht elim und x,y vecinos -> y in vecino
 ;   => 
 ;   (modify ?h1 (estado asignado))
-; );;;TODO: eliminert das die ganzen encerrar regeln?
+;);;;TODO: eliminert das die ganzen encerrar regeln?
 
 ;;;============================================================================
 ;;; Reglas para imprimir el resultado
@@ -621,11 +767,21 @@
 ;;; las celdas con el estado 'desconocido' contienen un sÃ­mbolo '?'.
 
 ;;; TODO: just for dev
-(defrule marca-como-resuelto
-  (declare (salience -9))
+(deffunction contar-particiones ()
+  (bind ?res 0)
+  (do-for-all-facts ((?p particion)) TRUE
+    (bind ?res (+ ?res 1))
+  )
+  (return ?res)
+)
+
+;;; TODO: just for dev
+(defrule marcar-como-resuelto
+  (declare (salience -11))
   (not (celda (estado desconocido)))
   => 
   (assert (puzle-resuelto))
+  (printout t "Resuelto!" crlf)
 )
 
 (defrule imprime-solucion
@@ -694,7 +850,6 @@
 ;;; ejemplos. 
 
 (deffunction lee-puzle (?n)
-  (bind ?res 0)
   (open "ejemplos.txt" data "r")
   (loop-for-count (?i 1 (- ?n 1))
                   (readline data))
@@ -703,8 +858,7 @@
   (procesa-datos-ejemplo ?datos)
   (run)
   (close data)
-  (do-for-all-facts ((?fct particion)) TRUE
-    (bind ?res (+ ?res 1)))
+  (bind ?res (contar-particiones)) ;;TODO: remove, just for dev
   (printout t "Particiones: " ?res crlf)
 )
 
@@ -724,7 +878,7 @@
    (printout t "ejemplos.txt :" ?i crlf)
    (run)
    (bind ?datos (readline data))
-   (do-for-fact ((?fct puzle-resuelto)) TRUE
+   (do-for-fact ((?fct puzle-resuelto)) TRUE ;;;TODO: remove, just for dev
     (bind ?res (+ ?res 1))))
   (printout t "Resueltos: " ?res " / " ?i crlf)
   (close data))
