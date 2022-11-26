@@ -253,18 +253,10 @@
 ;;; o si es la unica que contiene x con el estado desconocido y todas las otras
 ;;; celdas con un x son eliminadas, entonces esta celda debe estar asignada. 
 ;;; No hay nada que podría forzarla a estar eliminada.
-;;;
-;;; Asignamos a la regla una salienca de -5, porque sea ejecutada antes de las reglas
-;;; para imprimir la solucion, pero despues de las reglas eliminar-dobles-fila y 
-;;; eliminar-dobles-columna. Asi no tenemos que checkear por el valor asignado, porque
-;;; sabemos que si había una celda en la misma fila o columna con x y el valor asignado,
-;;; la celda ?h de la regla asignar-solteros ya hubiera estado eliminada por una de las 
-;;; reglas eliminar-dobles y la regla asignar-solteros ni siquiera se activaría.
 (defrule asignar-solteros
-  (declare (salience -5))
   ?h <- (celda (fila ?f) (columna ?c) (valor ?v) (estado desconocido))
-  (not (celda (fila ?f) (columna ?c1&~?c) (valor ?v) (estado desconocido)))
-  (not (celda (fila ?f1&~?f) (columna ?c) (valor ?v) (estado desconocido)))
+  (not (celda (fila ?f) (columna ?c1&~?c) (valor ?v) (estado ?e&~eliminado)))
+  (not (celda (fila ?f1&~?f) (columna ?c) (valor ?v) (estado ?e&~eliminado)))
   => 
   (modify ?h (estado asignado))
 )
