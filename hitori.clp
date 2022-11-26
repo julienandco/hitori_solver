@@ -339,6 +339,8 @@
 ;;; 2 X     Este vecino tiene que ser asignado, porque el (2,3) no sea dividido del resto del
 ;;; X       tablero.
 ;;;
+;;; Asignamos una saliencia a esta regla para que solo se ejecute cuando no hay otra regla
+;;; que podría añadir nuevos vecinos a la particion.
 (defrule asignar-unico-vecino
   (declare (salience -8))
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
