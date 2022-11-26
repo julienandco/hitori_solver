@@ -144,9 +144,8 @@
 ;;; backtracking, añadir paso de backtracking a los hechos.
 (deffunction hacer-paso-de-backtrack (?f ?c)
   (if (any-factp ((?b paso-backtracking)) TRUE) then (assert(paso-backtracking (fila ?f) (columna ?c))))
-  (if (any-factp ((?b paso-backtracking)) TRUE) then  (printout t "backtrack-paso:" ?f ", " ?c crlf)
 )
-)
+
 
 ;;;============================================================================
 ;;; Estrategias de resoluciÃ³n
@@ -182,7 +181,6 @@
   )
   =>
   (hacer-paso-de-backtrack ?f1 ?c1)
-  (printout t "sandwich" crlf)
   (modify ?h (estado asignado))
 )
 
@@ -218,7 +216,6 @@
   )
   => 
   (hacer-paso-de-backtrack ?f1 ?c1)
-  (printout t "pareja-y-soltero" crlf)
   (modify ?h (estado eliminado)) 
 )
 
@@ -236,7 +233,6 @@
            (and (= ?c2 (- ?c1 1)) (= ?f1 ?f2)))) ;celda izquierda
   => 
   (hacer-paso-de-backtrack ?f2 ?c2)
-  (printout t "asignar-entorno-de-elminado" crlf)
   (modify ?h (estado asignado)) 
 )
 
@@ -255,7 +251,6 @@
   )
   => 
   (hacer-paso-de-backtrack ?f2 ?c2)
-  (printout t "eliminar-dobles" crlf)
   (modify ?h (estado eliminado))
 )
 
@@ -271,7 +266,6 @@
   (not (celda (fila ?f1&~?f) (columna ?c) (valor ?v) (estado ?e&~eliminado)))
   => 
   (hacer-paso-de-backtrack ?f ?c)
-  (printout t "asignar-solteros" crlf)
   (modify ?h (estado asignado))
 )
 
@@ -374,7 +368,6 @@
   ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
   => 
   (hacer-paso-de-backtrack ?f1 ?c1)
-  (printout t "asignar-unico-vecino" crlf)
   (modify ?h1 (estado asignado))
 )
 
@@ -407,7 +400,6 @@
  (not (hay-error))
  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
  => 
- (printout t "backtrack-inicio: eliminando a " ?f ", " ?c crlf)
  (assert (paso-backtracking (primero TRUE) (fila ?f) (columna ?c)))
  (modify ?h (estado eliminado))
 )
@@ -424,13 +416,11 @@
 
 ;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 particion, hay un error.
 (defrule error-mas-que-una-particion
-  (not (hay-error));;TODO:Necessario?
-  (celda)
+  (declare (salience -9))
   (not (celda (estado desconocido)))
   => 
   (bind ?parts (contar-particiones))
-  (if (> ?parts 1) then (assert (hay-error))) ;;das triggert endlosschleife
-  (if (> ?parts 1) then (printout t "mas-que-una-particion: " ?parts crlf))
+  (if (> ?parts 1) then (assert (hay-error)))
 )
 
 ;;; Si descubrimos que hay un error, reasignamos el estado desconocido a cada celda que
@@ -441,7 +431,6 @@
  ?h <- (celda (fila ?f) (columna ?c))
  => 
  (modify ?h (estado desconocido))
- (printout t "deshaciendo " ?f " " ?c crlf)
  (retract ?b)
 )
 
@@ -459,7 +448,6 @@
  ?h <- (celda (fila ?f) (columna ?c))
  => 
  (modify ?h (estado asignado)) 
- (printout t "deshaciendo el primero paso " ?f " , " ?c crlf)
  (retract ?b)
  ;;; Guardar como cada particion se cambió durante el backtrack es demasiado cansado, por
  ;;; eso las borramos todas y dejan las reglas reconstruirlas.
