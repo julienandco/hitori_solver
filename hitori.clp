@@ -563,12 +563,25 @@
 )
 
 ;;; TODO: just for dev
-(defrule marcar-como-resuelto
-  (declare (salience -9))
-  (not (celda (estado desconocido)))
-  => 
-  (assert (puzle-resuelto))
-  (printout t "Resuelto!" crlf)
+(deffunction puzle-resuelto ()
+  (bind ?res TRUE)
+  (if (any-factp ((?c celda)) (eq ?c:estado desconocido))
+    then (bind ?res FALSE)
+  )
+  (bind ?parts (contar-particiones))
+  (if (> ?parts 1)
+    then (bind ?res FALSE)
+  )
+  (return ?res)
+)
+
+;;; TODO: just for dev
+(deffunction imprimir-status ()
+  (bind ?parts (contar-particiones)) ;;TODO: remove, just for dev
+  (printout t "Particiones: " ?parts crlf)
+  (if (puzle-resuelto)
+       then (printout t "Resuelto!" crlf)
+   )
 )
 
 (defrule imprime-solucion
@@ -616,7 +629,10 @@
   (printout t "|" ?fila1 "|        |" ?fila2 "|" crlf)
   (if (= ?i 9)
       then (printout t "+---------+        +---------+" crlf)
-    else (assert (imprime (+ ?i 1)))))
+    else (assert (imprime (+ ?i 1))))
+  (if (= ?i 9)
+      then (imprimir-status))
+  )
 
 ;;;============================================================================
 ;;; Funcionalidad para leer los puzles del fichero de ejemplos
@@ -646,8 +662,6 @@
   (procesa-datos-ejemplo ?datos)
   (run)
   (close data)
-  (bind ?res (contar-particiones)) ;;TODO: remove, just for dev
-  (printout t "Particiones: " ?res crlf)
 )
 
 ;;; Esta funciÃ³n comprueba todos los puzles de un fichero que se pasa como
@@ -666,10 +680,8 @@
    (printout t "ejemplos.txt :" ?i crlf)
    (run)
    (bind ?datos (readline data))
-   (bind ?parts (contar-particiones)) ;;TODO: remove, just for dev
-   (printout t "Particiones: " ?parts crlf)
-   (do-for-fact ((?fct puzle-resuelto)) TRUE ;;;TODO: remove, just for dev
-    (bind ?res (+ ?res 1))
+   (if (puzle-resuelto) ;;TODO: remove just for dev
+       then (bind ?res (+ ?res 1))
    )
   )
   (printout t "Resueltos: " ?res " / " ?i crlf)
