@@ -144,6 +144,8 @@
 ;;; backtracking, añadir paso de backtracking a los hechos.
 (deffunction hacer-paso-de-backtrack (?f ?c)
   (if (any-factp ((?b paso-backtracking)) TRUE) then (assert(paso-backtracking (fila ?f) (columna ?c))))
+  (if (any-factp ((?b paso-backtracking)) TRUE) then  (printout t "backtrack-paso:" ?f ", " ?c crlf)
+)
 )
 
 ;;;============================================================================
@@ -180,6 +182,7 @@
   )
   =>
   (hacer-paso-de-backtrack ?f1 ?c1)
+  (printout t "sandwich" crlf)
   (modify ?h (estado asignado))
 )
 
@@ -215,6 +218,7 @@
   )
   => 
   (hacer-paso-de-backtrack ?f1 ?c1)
+  (printout t "pareja-y-soltero" crlf)
   (modify ?h (estado eliminado)) 
 )
 
@@ -232,6 +236,7 @@
            (and (= ?c2 (- ?c1 1)) (= ?f1 ?f2)))) ;celda izquierda
   => 
   (hacer-paso-de-backtrack ?f2 ?c2)
+  (printout t "asignar-entorno-de-elminado" crlf)
   (modify ?h (estado asignado)) 
 )
 
@@ -250,6 +255,7 @@
   )
   => 
   (hacer-paso-de-backtrack ?f2 ?c2)
+  (printout t "eliminar-dobles" crlf)
   (modify ?h (estado eliminado))
 )
 
@@ -265,6 +271,7 @@
   (not (celda (fila ?f1&~?f) (columna ?c) (valor ?v) (estado ?e&~eliminado)))
   => 
   (hacer-paso-de-backtrack ?f ?c)
+  (printout t "asignar-solteros" crlf)
   (modify ?h (estado asignado))
 )
 
@@ -367,6 +374,7 @@
   ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
   => 
   (hacer-paso-de-backtrack ?f1 ?c1)
+  (printout t "asignar-unico-vecino" crlf)
   (modify ?h1 (estado asignado))
 )
 
@@ -393,9 +401,10 @@
 
 ;;;TODO: iniciar el backtrack con una celda que influye un numero maximo de vecions
 (defrule backtrack-inicio
- (declare (salience -8))
+ (declare (salience -9))
  (not (puzle-resuelto))
  (not (paso-backtracking))
+ (not (hay-error))
  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
  => 
  (printout t "backtrack-inicio: eliminando a " ?f ", " ?c crlf)
@@ -403,14 +412,26 @@
  (modify ?h (estado eliminado))
 )
 
-;;error: alle assigned, aber mehr als 1 partition
-;; wie kann ich das "zwei schwarze nebeneinander werden enforced" erkennen? -> regeln rallen das nicht
+(deffunction contar-particiones ()
+  (bind ?res 0)
+  (do-for-all-facts ((?p particion)) TRUE
+    (bind ?res (+ ?res 1))
+  )
+  (return ?res)
+)
 
-; (defrule detectar-error
-;   FALSE
-;  => 
-;  (assert (hay-error))
-; )
+;;TODO:  wie kann ich das "zwei schwarze nebeneinander werden enforced" erkennen? -> regeln rallen das nicht
+
+;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 particion, hay un error.
+(defrule error-mas-que-una-particion
+  (not (hay-error));;TODO:Necessario?
+  (celda)
+  (not (celda (estado desconocido)))
+  => 
+  (bind ?parts (contar-particiones))
+  (if (> ?parts 1) then (assert (hay-error))) ;;das triggert endlosschleife
+  (if (> ?parts 1) then (printout t "mas-que-una-particion: " ?parts crlf))
+)
 
 ;;; Si descubrimos que hay un error, reasignamos el estado desconocido a cada celda que
 ;;; ha estado cambiada durante el backtrack.
@@ -420,9 +441,13 @@
  ?h <- (celda (fila ?f) (columna ?c))
  => 
  (modify ?h (estado desconocido))
+ (printout t "deshaciendo " ?f " " ?c crlf)
  (retract ?b)
 )
 
+(deffunction eliminar-particiones ()
+
+)
 ;;; Si descubrimos que hay un error y que solo queda el primero paso de backtrack a deshacer,
 ;;; asignamos el estado asignado a la celda que iniciaba el backtrack. Esto es porque cuando
 ;;; empezamos el backtrack, la primera celda recibi el estado eliminado. Pero eso ha provocado
@@ -434,149 +459,15 @@
  ?h <- (celda (fila ?f) (columna ?c))
  => 
  (modify ?h (estado asignado)) 
+ (printout t "deshaciendo el primero paso " ?f " , " ?c crlf)
  (retract ?b)
+ ;;; Guardar como cada particion se cambió durante el backtrack es demasiado cansado, por
+ ;;; eso las borramos todas y dejan las reglas reconstruirlas.
+ (do-for-all-facts ((?p particion)) TRUE
+    (retract ?p)
+ )
  (retract ?e)
 )
-
-;;;TODO: no necessario?
-; (defrule backtrack-paso
-;  (declare (salience -8))
-;  (not (puzle-resuelto))
-;  ?s <- (backtracking-step (step-number ?n))
-;  (not (backtracking-step (step-number ?n2&:(> ?n2 ?n))))
-;  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
-;  => 
-;  (printout t "backtrack-paso" crlf)
-;  (assert (backtracking-step (step-number (+ ?n 1)) (fila ?f) (columna ?c)))
-;  (modify ?h (estado eliminado))
-; )
-
-
-
-; (defrule undo-first-backtrack 
-;  (declare (salience -9))
-;  (not (puzle-resuelto))
-;  (undo-backtrack)
-;  ?s <- (backtracking-step (step-number 0) (fila ?f) (columna ?c))
-;  (not (backtracking-step (step-number ?n&~0)))
-;  ?h <- (celda (fila ?f) (columna ?c))
-;  => 
-;  (printout t "undo-first-backtrack" crlf)
-;  (retract ?s)
-;  (modify ?h (estado asignado))
-; )
-
-; (defrule error-dos-eliminadas-juntas
-;  (celda (fila ?f1) (columna ?c1) (valor ?v1) (estado eliminado))
-;  (celda (fila ?f2) (columna ?c2) (valor ?v2) (estado eliminado))
-;  (test (or
-;         (and (= ?f1 ?f2) (= ?c1 (+ ?c2 1)))
-;         (and (= ?c1 ?c2) (= ?f1 (+ ?f2 1)))
-;        ))
-;  =>
-;  (printout t "error-junta!" crlf)
-;  (assert (undo-backtrack))
-; )
-
-
-
-;;;============================================================================
-;;; MÜLLEIMER !?
-;;;============================================================================
-
-; (defrule m-pair-col
-;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f1) (columna ?c2) (valor ?v2))
-;   (test(= ?c2 (+ ?c1 1)))
-;   (celda (fila ?f2) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
-;   (test(neq ?f1 ?f2))
-;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
-;   (test (or 
-;           (and (= ?c1 ?c3) (eq ?v1 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
-;           (and (= ?c2 ?c3) (eq ?v2 ?v3) (neq ?f1 ?f3) (neq ?f2 ?f3)) 
-;         ))
-;   => 
-;   (printout t "m-pair-col hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-
-; (defrule m-pair-fila
-;   (celda (fila ?f1) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c1) (valor ?v2))
-;   (test(= ?f2 (+ ?f1 1)))
-;   (celda (fila ?f1) (columna ?c2) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c2) (valor ?v2))
-;   (test(neq ?c1 ?c2))
-;   ?h <- (celda (fila ?f3) (columna ?c3) (estado desconocido) (valor ?v3))
-;   (test (or 
-;           (and (= ?f1 ?f3) (eq ?v1 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
-;           (and (= ?f2 ?f3) (eq ?v2 ?v3) (neq ?c1 ?c3) (neq ?c2 ?c3)) 
-;         ))
-;   => 
-;   (printout t "m-pair-fila hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-
-; ; ;;; Si dos dobles son en "sandwich" en una fila/columna, todos los singulos de la 
-; ; ;;; misma fila/columna tienen que estar eliminados.
-; ; ;;;
-; ; ;;; 2 3 3 2 1 5 6 3 4 2
-; ; ;;;               ^   ^ (el singulo 3 y 2 ambos tienen que estar eliminados)
-; ; ;;;
-
-; (defrule isolacion-flancada-fila-1
-;   (celda (fila ?f) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f) (columna ?c2) (valor ?v2))
-;   (celda (fila ?f) (columna ?c3) (valor ?v2))
-;   (celda (fila ?f) (columna ?c4) (valor ?v1))
-;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
-;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v1))
-;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
-;   => 
-;   (printout t "flancada 1 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-; (defrule isolacion-flancada-fila-2
-;   (celda (fila ?f) (columna ?c1) (valor ?v1))
-;   (celda (fila ?f) (columna ?c2) (valor ?v2))
-;   (celda (fila ?f) (columna ?c3) (valor ?v2))
-;   (celda (fila ?f) (columna ?c4) (valor ?v1))
-;   (test(and (= ?c2 (+ ?c1 1)) (= ?c3 (+ ?c1 2)) (= ?c4 (+ ?c1 3))))
-;   ?h <- (celda (fila ?f) (columna ?c5) (estado desconocido) (valor ?v2))
-;   (test (or (< ?c5 ?c1) (> ?c5 ?c4)))
-;   => 
-;   (printout t "flancada 2 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-; (defrule isolacion-flancada-columna-1
-;   (celda (fila ?f1) (columna ?c) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c) (valor ?v2))
-;   (celda (fila ?f3) (columna ?c) (valor ?v2))
-;   (celda (fila ?f4) (columna ?c) (valor ?v1))
-;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
-;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v1))
-;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
-;   => 
-;   (printout t "flancada-col 1 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-; (defrule isolacion-flancada-columna-2
-;   (celda (fila ?f1) (columna ?c) (valor ?v1))
-;   (celda (fila ?f2) (columna ?c) (valor ?v2))
-;   (celda (fila ?f3) (columna ?c) (valor ?v2))
-;   (celda (fila ?f4) (columna ?c) (valor ?v1))
-;   (test(and (= ?f2 (+ ?f1 1)) (= ?f3 (+ ?f1 2)) (= ?f4 (+ ?f1 3))))
-;   ?h <- (celda (fila ?f5) (columna ?c) (estado desconocido) (valor ?v2))
-;   (test (or (< ?f5 ?f1) (> ?f5 ?f4)))
-;   => 
-;   (printout t "flancada-col 2 hecha" crlf)
-;   (modify ?h (estado eliminado))
-; )
-
-;;;;;;;;;; MÜLLEIMER ENDE ;;;;;;;;;;
-
-
 
 ;;;============================================================================
 ;;; Reglas para imprimir el resultado
@@ -592,15 +483,6 @@
 ;;; tienen un estado 'asignado' contienen el valor numÃ©rico asociado, las
 ;;; celdas que tienen un estado 'eliminado' contienen un espacio en blanco y
 ;;; las celdas con el estado 'desconocido' contienen un sÃ­mbolo '?'.
-
-;;; TODO: just for dev
-(deffunction contar-particiones ()
-  (bind ?res 0)
-  (do-for-all-facts ((?p particion)) TRUE
-    (bind ?res (+ ?res 1))
-  )
-  (return ?res)
-)
 
 ;;; TODO: just for dev
 (deffunction puzle-resuelto ()
