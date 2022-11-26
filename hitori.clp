@@ -166,26 +166,11 @@
 ;;; Si hay una pareja de un número x en una fila y hay una otra celda con x en la misma
 ;;; fila NON adyacente a la pareja, entonces el x soltero debe ser eliminado.
 ;;; 
-;;; Ejemplo:
+;;; Ejemplos:
 ;;;
 ;;;   1 2 2 3 4 4 2 8 
 ;;;               ^
 ;;;               este 2 se elimina
-;;;
-(defrule pareja-y-soltero-fila
-  ?h <- (celda (fila ?f) (columna ?c1) (valor ?v) (estado desconocido))
-  (celda (fila ?f) (columna ?c2) (valor ?v))
-  (celda (fila ?f) (columna ?c3) (valor ?v))
-  (test (= ?c2 (- ?c3 1))) ;comprobar que los dos celdas sean una pareja
-  (test (or (> ?c1 (+ ?c3 1)) (< ?c1 (- ?c2 1)))) ;comprobar que la celda soltera esta en una celda non adyacente
-  => 
-  (modify ?h (estado eliminado)) 
-)
-
-;;; Si hay una pareja de un número x en una columna y hay una otra celda con x en la 
-;;; misma columna NON adyacente a la pareja, entonces el x soltero debe ser eliminado.
-;;; 
-;;; Ejemplo:
 ;;;
 ;;;   1 
 ;;;   2 
@@ -195,13 +180,17 @@
 ;;;   2 <- este 2 se elimina
 ;;;   8 
 ;;;
-
-(defrule pareja-y-soltero-columna
-  ?h <- (celda (columna ?c) (fila ?f1) (valor ?v) (estado desconocido))
-  (celda (columna ?c) (fila ?f2) (valor ?v))
-  (celda (columna ?c) (fila ?f3) (valor ?v))
-  (test (= ?f2 (- ?f3 1))) ;comprobar que los dos celdas sean una pareja
-  (test (or (> ?f1 (+ ?f3 1)) (< ?f1 (- ?f2 1)))) ;comprobar que la celda soltera esta en una celda non adyacente
+(defrule pareja-y-soltero
+  ?h <- (celda (fila ?f1) (columna ?c1) (valor ?v) (estado desconocido))
+  (celda (fila ?f2) (columna ?c2) (valor ?v))
+  (celda (fila ?f3) (columna ?c3) (valor ?v))
+  (test (or 
+          ; misma fila, celda2 y celda3 son pareja y celda1 no es adyacente a celda2 o celda3
+          (and (= ?f1 ?f2) (= ?f1 ?f3) (= ?c2 (- ?c3 1)) (or (> ?c1 (+ ?c3 1)) (< ?c1 (- ?c2 1)))) 
+          ; misma columna celda2 y celda3 son pareja y celda1 no es adyacente a celda2 o celda3
+          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?f2 (- ?f3 1)) (or (> ?f1 (+ ?f3 1)) (< ?f1 (- ?f2 1)))) 
+        )
+  )
   => 
   (modify ?h (estado eliminado)) 
 )
