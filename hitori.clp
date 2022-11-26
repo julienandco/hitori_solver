@@ -293,11 +293,6 @@
         ))
 )
 
-;;; Devuelve todas las celdas que son vecinos de la celda con fila ?f y columna ?c
-(deffunction devolver-vecinos (?f ?c)
-  (return (find-all-facts ((?h celda)) (son-vecinos ?f ?c ?h:fila ?h:columna)))
-)
-
 ;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
 ;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
 ;;; que solo contiene la celda que acaba de ser asignada.
