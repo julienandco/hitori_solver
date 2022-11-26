@@ -395,7 +395,6 @@
 (defrule backtrack-inicio
  (declare (salience -9))
  (not (puzle-resuelto))
- (not (paso-backtracking))
  (not (hay-error))
  ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
  => 
