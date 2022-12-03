@@ -133,7 +133,11 @@
 ;;; Backtracking
 ;;;============================================================================
 
-;;; Template para el backtracking
+;;; Template para el backtracking. Nivel es un numero entero non-negativo que 
+;;; describe el nivel de backtracking (la profundidad de la recursividad) en lo
+;;; cual el paso ha estado hecho. Primero es un attributo booleano que describe
+;;; si el paso fui el primero (TRUE) o si fui implicado por el primero paso (FALSE).
+;;; Fila y columna son los indices de la celda que ha estado cambiada en este paso.
 (deftemplate paso-backtracking
   (slot nivel)
   (slot primero (allowed-values FALSE TRUE) (default FALSE))
@@ -178,8 +182,8 @@
   (celda (fila ?f2) (columna ?c2) (valor ?v))
   (celda (fila ?f3) (columna ?c3) (valor ?v))
   (test (or 
-          (and (= ?f1 ?f2) (= ?f1 ?f3) (= ?c2 (+ ?c1 1)) (= ?c3 (- ?c1 1))) ;misma fila
-          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?f2 (+ ?f1 1)) (= ?f3 (- ?f1 1))) ;misma columna
+          (and (= ?f1 ?f2) (= ?f1 ?f3) (= ?c2 (+ ?c1 1)) (= ?c3 (- ?c1 1))) ;;; misma fila
+          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?f2 (+ ?f1 1)) (= ?f3 (- ?f1 1))) ;;; misma columna
         )   
   )
   =>
@@ -269,10 +273,14 @@
 ;;;============================================================================
 ;;; Particiones
 ;;;============================================================================
-(
-  deftemplate particion
-  (multislot miembros) ;;; Aqui se guardan las celdas que forman parte de la particion
-  (multislot vecinos) ;;; Aqui se guardan las celdas que son vecinos de la particion
+
+;;; Template para una partición. Miembros es una lista de celdas que pertencecen
+;;; a la partición. Vecinos es una lista de celdas con estado desconocido que
+;;; son vecinos con al menos una celda que esta en la partición (en la lista
+;;; 'miembros').
+(deftemplate particion
+  (multislot miembros)
+  (multislot vecinos)
 )
 
 ;;; Determina si dos celdas son vecinos o no
@@ -285,9 +293,19 @@
         ))
 )
 
+;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si no esta 
+;;; vecina de una particion ya existente, se crea una nueva partición que solo contiene la celda 
+;;; que acaba de ser asignada.
+(defrule añadir-asignado-a-particion-nueva
+  (not (hay-error)) 
+  ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
+  (not (particion (miembros $?x ?h $?y)))
+  => 
+  (assert (particion (miembros ?h)))
+)
+
 ;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
-;;; vecina de una particion ya existente, se une a esa particion. Si no, se crea una nueva
-;;; que solo contiene la celda que acaba de ser asignada.
+;;; vecina de una particion ya existente, se une a esa particion.
 (defrule añadir-asignado-a-particion-existente
   (not (hay-error)) 
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
@@ -297,14 +315,6 @@
   ?p <- (particion (miembros $?x ?h1 $?y))
   => 
   (modify ?p (miembros $?x ?h1 ?h2 $?y))
-)
-
-(defrule añadir-asignado-a-particion-nueva
-  (not (hay-error)) 
-  ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
-  (not (particion (miembros $?x ?h $?y)))
-  => 
-  (assert (particion (miembros ?h)))
 )
 
 ;;; Cada celda que esta desconocida y que esta vecino de una celda que esta parte de
@@ -382,9 +392,9 @@
 ;;; Backtracking
 ;;;============================================================================
 
-;;; Empieza el backtracking, si no hay otra regla que se activa y que el puzle
+;;; Empieza el primero nivel del backtracking, si no hay otra regla que se activa y que el puzle
 ;;; todavia no esta resuelto.
-(defrule backtrack-inicio-primer-nivel
+(defrule backtrack-inicio-primero-nivel
  (declare (salience -9))
  (not (paso-backtracking))
  (not (puzle-resuelto))
@@ -395,6 +405,8 @@
  (modify ?h (estado eliminado))
 )
 
+;;; Empieza un nivel avanzado (empieza la recursion) del backtracking, si no hay otra regla 
+;;; que se activa y que el puzle todavia no esta resuelto.
 (defrule backtrack-inicio-nivel-avanzado
  (declare (salience -9))
  (paso-backtracking (nivel ?i1))
