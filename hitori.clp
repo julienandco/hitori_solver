@@ -149,7 +149,10 @@
 ;;; backtracking, añadir paso de backtracking a los hechos.
 (deffunction hacer-paso-de-backtrack (?f ?c)
   (bind ?i 0)
+  ;;; Buscamos el nivel lo mas elevado de backtracking activo
   (do-for-all-facts ((?b paso-backtracking)) TRUE (if (> ?b:nivel ?i) then (bind ?i ?b:nivel)))
+
+  ;;; Asociamos el paso actual de backtracking a este nivel
   (do-for-fact ((?b paso-backtracking)) (= ?b:nivel ?i) (assert(paso-backtracking (nivel ?b:nivel) (fila ?f) (columna ?c))))
 )
 
@@ -419,22 +422,15 @@
  (modify ?h (estado eliminado))
 )
 
-;;; Cuenta el nombre de particiones que hay.
-(deffunction contar-particiones ()
-  (bind ?res 0)
-  (do-for-all-facts ((?p particion)) TRUE
-    (bind ?res (+ ?res 1))
-  )
-  (return ?res)
-)
-
 ;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 particion, hay un error.
 (defrule error-mas-que-una-particion-al-final
   (declare (salience -9))
   (not (celda (estado desconocido)))
+  ?p1 <- (particion)
+  ?p2 <- (particion)
+  (test (neq ?p1 ?p2))
   => 
-  (bind ?parts (contar-particiones))
-  (if (> ?parts 1) then (assert (hay-error)))
+  (assert (hay-error))
 )
 
 ;;; Si todavia hay celdas con estado desconocido, pero tambien una particion que no tiene
@@ -586,7 +582,6 @@
   (open "ejemplos.txt" data "r")
   (bind ?datos (readline data))
   (bind ?i 0)
-  (bind ?res 0)
   (while (neq ?datos EOF)
    (bind ?i (+ ?i 1))
    (reset)
