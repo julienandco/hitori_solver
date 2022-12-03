@@ -432,9 +432,7 @@
 (defrule error-mas-que-una-particion-al-final
   (declare (salience -9))
   (not (celda (estado desconocido)))
-  ; (test (> (contar-particiones) 1))
   => 
-  (assert (hay-error))
   (bind ?parts (contar-particiones))
   (if (> ?parts 1) then (assert (hay-error)))
 )
@@ -580,19 +578,6 @@
   (close data)
 )
 
-;;; TODO: just for dev
-(deffunction puzle-resuelto ()
-  (bind ?res TRUE)
-  (if (any-factp ((?c celda)) (eq ?c:estado desconocido))
-    then (bind ?res FALSE)
-  )
-  (bind ?parts (contar-particiones))
-  (if (> ?parts 1)
-    then (bind ?res FALSE)
-  )
-  (return ?res)
-)
-
 ;;; Esta funciÃ³n comprueba todos los puzles de un fichero que se pasa como
 ;;; argumento. Se usa:
 ;;; CLIPS> (procesa-ejemplos)
@@ -609,11 +594,7 @@
    (printout t "ejemplos.txt :" ?i crlf)
    (run)
    (bind ?datos (readline data))
-   (if (puzle-resuelto) ;;TODO: remove just for dev
-       then (bind ?res (+ ?res 1))
-   )
   )
-  (printout t "Resueltos: " ?res " / " ?i crlf)
   (close data))
 
 ;;;============================================================================
