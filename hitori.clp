@@ -135,9 +135,10 @@
 
 ;;; Template para el backtracking. Nivel es un numero entero non-negativo que 
 ;;; describe el nivel de backtracking (la profundidad de la recursividad) en lo
-;;; cual el paso ha estado hecho. Primero es un attributo booleano que describe
-;;; si el paso fui el primero (TRUE) o si fui implicado por el primero paso (FALSE).
-;;; Fila y columna son los indices de la celda que ha estado cambiada en este paso.
+;;; cual hemos hecho el paso. Primero es un attributo booleano que describe
+;;; si el paso fui el primero (TRUE) o si fui implicado por el primero paso (FALSE)
+;;; (si el paso es la raíz del árbol de recursión o no).
+;;; Fila y columna son los coordenadas de la celda que ha estado cambiada en este paso.
 (deftemplate paso-backtracking
   (slot nivel)
   (slot primero (allowed-values FALSE TRUE) (default FALSE))
@@ -179,7 +180,7 @@
 ;;;     4
 ;;;
 (defrule sandwich  
-  ;;; Siempre tenemos que checkear que no haya error antes de que hagamos algo
+  ;;; Siempre tenemos que checkear que no haya errores antes de que hagamos algo
   (not (hay-error)) 
   ?h <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
   (celda (fila ?f2) (columna ?c2) (valor ?v))
@@ -219,7 +220,7 @@
   (test (or 
           ;;; misma fila, celda2 y celda3 son pareja y celda1 no es adyacente a celda2 o celda3
           (and (= ?f1 ?f2) (= ?f1 ?f3) (= ?c2 (- ?c3 1)) (or (> ?c1 (+ ?c3 1)) (< ?c1 (- ?c2 1)))) 
-          ;;; misma columna celda2 y celda3 son pareja y celda1 no es adyacente a celda2 o celda3
+          ;;; misma columna, celda2 y celda3 son pareja y celda1 no es adyacente a celda2 o celda3
           (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?f2 (- ?f3 1)) (or (> ?f1 (+ ?f3 1)) (< ?f1 (- ?f2 1)))) 
         )
   )
@@ -279,7 +280,7 @@
 
 ;;; Template para una partición. Miembros es una lista de celdas que pertencecen
 ;;; a la partición. Vecinos es una lista de celdas con estado desconocido que
-;;; son vecinos con al menos una celda que esta en la partición (en la lista
+;;; son vecinos de al menos una celda que esta en la partición (en la lista
 ;;; 'miembros').
 (deftemplate particion
   (multislot miembros)
@@ -296,8 +297,8 @@
         ))
 )
 
-;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si no esta 
-;;; vecina de una particion ya existente, se crea una nueva partición que solo contiene la celda 
+;;; Cada vez que una celda esta asignada, se une automaticamente a una partición. Si no esta 
+;;; vecina de una partición ya existente, se crea una nueva partición que solo contiene la celda 
 ;;; que acaba de ser asignada.
 (defrule añadir-asignado-a-particion-nueva
   (not (hay-error)) 
@@ -307,8 +308,8 @@
   (assert (particion (miembros ?h)))
 )
 
-;;; Cada vez que una celda esta asignada, se une automaticamente a una particion. Si esta 
-;;; vecina de una particion ya existente, se une a esa particion.
+;;; Cada vez que una celda esta asignada, se une automaticamente a una partición. Si esta 
+;;; vecina de una partición ya existente, se une a esa partición.
 (defrule añadir-asignado-a-particion-existente
   (not (hay-error)) 
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
@@ -321,7 +322,7 @@
 )
 
 ;;; Cada celda que esta desconocida y que esta vecino de una celda que esta parte de
-;;; una particion, se agrega al conjunto de vecinos de la particion
+;;; una partición, se agrega al conjunto de vecinos de la partición
 (defrule añadir-vecino-desconocido
   (not (hay-error)) 
   ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
@@ -333,8 +334,8 @@
   (modify ?p (vecinos $?v ?h1))
 )
 
-;;; Si una celda h esta eliminada y es vecino de una celda que esta parte de una particion,
-;;; la celda h tiene que quitarse del conjunto de vecinos de la particion
+;;; Si una celda h esta eliminada y es vecino de una celda que esta parte de una partición,
+;;; la celda h tiene que quitarse del conjunto de vecinos de la partición
 (defrule quitar-vecinos-eliminados
   (not (hay-error)) 
   ?h <- (celda (estado eliminado))
@@ -343,8 +344,8 @@
   (modify ?p (vecinos $?a $?b))
 )
 
-;;; Si un vecino ha estado asignado y ahora forma parte de los miembros de una particion,
-;;; entonces se tiene que quitar de los vecinos de la particion
+;;; Si un vecino ha estado asignado y ahora forma parte de los miembros de una partición,
+;;; entonces se tiene que quitar de los vecinos de la partición
 (defrule quitar-vecinos-asignados
   (not (hay-error)) 
   ?p <- (particion (miembros $? ?v $?) (vecinos $?a ?v $?b))
@@ -352,18 +353,18 @@
   (modify ?p (vecinos $?a $?b))
 )
 
-;;; Si una particion solo tiene a una sola celda desconocida como vecino, entonces esa celda
-;;; tiene que estar asignada, porque la particion no se divida del resto del tablero.
+;;; Si una partición solo tiene a una sola celda desconocida como vecino, entonces esa celda
+;;; tiene que estar asignada, para que la partición no se divida del resto del tablero.
 ;;;
 ;;; Ejemplo:
 ;;;
 ;;; X
-;;; 3 ?     La particion (2,3) solo tiene a un vecino desconocido, el resto esta eliminado.
-;;; 2 X     Este vecino tiene que ser asignado, porque el (2,3) no sea dividido del resto del
+;;; 3 ?     La partición (2,3) solo tiene a un vecino desconocido, el resto esta eliminado.
+;;; 2 X     Este vecino tiene que ser asignado, porque el (2,3) no sea aislado del resto del
 ;;; X       tablero.
 ;;;
 ;;; Asignamos una saliencia a esta regla para que solo se ejecute cuando no hay otra regla
-;;; que podría añadir nuevos vecinos a la particion, pero antes de que el backtracking
+;;; que podría añadir nuevos vecinos a la partición, pero antes de que el backtracking
 ;;; empieza.
 (defrule asignar-unico-vecino
   (declare (salience -7))
@@ -375,7 +376,7 @@
   (modify ?h1 (estado asignado))
 )
 
-;;; Cuando una particion tiene como vecino un miembro de una otra particion, las particiones
+;;; Cuando una partición tiene como vecino un miembro de una otra partición, las particiones
 ;;; se unen y una de las dos particiones se elimina.
 (defrule unir-dos-particiones
   (not (hay-error)) 
@@ -396,7 +397,7 @@
 ;;;============================================================================
 
 ;;; Empieza el primero nivel del backtracking, si no hay otra regla que se activa y que el puzle
-;;; todavia no esta resuelto.
+;;; todavía no está resuelto.
 (defrule backtrack-inicio-primero-nivel
  (declare (salience -9))
  (not (paso-backtracking))
@@ -409,7 +410,7 @@
 )
 
 ;;; Empieza un nivel avanzado (empieza la recursion) del backtracking, si no hay otra regla 
-;;; que se activa y que el puzle todavia no esta resuelto.
+;;; que se activa y que el puzle todavía no está resuelto.
 (defrule backtrack-inicio-nivel-avanzado
  (declare (salience -9))
  (paso-backtracking (nivel ?i1))
@@ -422,7 +423,7 @@
  (modify ?h (estado eliminado))
 )
 
-;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 particion, hay un error.
+;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 partición, hay un error.
 (defrule error-mas-que-una-particion-al-final
   (declare (salience -9))
   (not (celda (estado desconocido)))
@@ -433,8 +434,8 @@
   (assert (hay-error))
 )
 
-;;; Si todavia hay celdas con estado desconocido, pero tambien una particion que no tiene
-;;; vecinos (porque todos son eliminados -> la particion es una isla), hay un error.
+;;; Si todavia hay celdas con estado desconocido, pero tambien una partición que no tiene
+;;; vecinos (porque todos son eliminados -> la partición es una isla), hay un error.
 (defrule celda-encerrada
   (celda (estado desconocido))
   (particion (vecinos))
@@ -456,7 +457,7 @@
 
 ;;; Si descubrimos que haya un error en el nivel 0 y que solo queda el primero paso de backtrack a deshacer,
 ;;; asignamos el estado asignado a la celda que iniciaba el backtrack. Esto es porque cuando
-;;; empezamos el backtrack, la primera celda recibi el estado eliminado. Pero eso ha provocado
+;;; empezamos el backtrack, la primera celda recibió el estado eliminado. Pero eso ha provocado
 ;;; un error, por eso sabemos que la celda tiene que ser asignada.
 ;;;
 ;;; Si por otra parte somos en un nivel n avanzado, no sabemos el valor que la celda tiene que tener.
