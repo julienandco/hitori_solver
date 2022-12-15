@@ -304,6 +304,7 @@
   (not (hay-error)) 
   ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
   (not (particion (miembros $?x ?h $?y)))
+  (not (particion (vecinos $?x ?h $?y)))
   => 
   (assert (particion (miembros ?h)))
 )
