@@ -162,120 +162,122 @@
 )
 
 ;;;============================================================================
-;;; Particiones
+;;; Partitions
 ;;;============================================================================
 
-;;; Template para una partición. Miembros es una lista de cells que pertencecen
-;;; a la partición. Vecinos es una lista de cells con cell-state unknown que
-;;; son vecinos de al menos una cell que esta en la partición (en la lista
-;;; 'miembros').
-(deftemplate particion
-  (multislot miembros)
-  (multislot vecinos)
+;;; Template for a partition. Members is the list of cells that belong to the
+;;; partition. Neighbors is the list of cells with cell-state unknown that are
+;;; adjacent to at least one cell in the list 'members'.
+(deftemplate partition
+  (multislot members)
+  (multislot neighbors)
 )
 
-;;; Determina si dos cells son vecinos o no
-(deffunction son-vecinos (?r1 ?c1 ?r2 ?c2)
+;;; Function that checks whether a cell is adjacent to another cell.
+(deffunction are-neighbors (?r1 ?c1 ?r2 ?c2)
 (return (or 
-        (and (= ?r2 (- ?r1 1)) (= ?c1 ?c2)) ;;; vecino arriba
-        (and (= ?r2 (+ ?r1 1)) (= ?c1 ?c2)) ;;; vecino abajo
-        (and (= ?r1 ?r2) (= ?c2 (+ ?c1 1))) ;;; vecino derecho
-        (and (= ?r1 ?r2) (= ?c2 (- ?c1 1))) ;;; vecino izquierdo
+        (and (= ?r2 (- ?r1 1)) (= ?c1 ?c2)) ;;; top neighbor
+        (and (= ?r2 (+ ?r1 1)) (= ?c1 ?c2)) ;;; bottom neighbor
+        (and (= ?r1 ?r2) (= ?c2 (+ ?c1 1))) ;;; right neighbor
+        (and (= ?r1 ?r2) (= ?c2 (- ?c1 1))) ;;; left neighbor
         ))
 )
 
-;;; Cada vez que una cell esta asignada, se une automaticamente a una partición. Si no esta 
-;;; vecina de una partición ya existente, se crea una nueva partición que solo contiene la cell 
-;;; que acaba de ser asignada.
-(defrule añadir-assigned-a-particion-nueva
+;;; Everytime a cell is assigned, it is added to the list of members of a partition. If
+;;; the cell is not neighbor of an already existing partition, a new partition is created
+;;; that only contains the cell that was just assigned.
+(defrule add-assigned-to-new-partition
   (not (is-error)) 
   ?h <- (cell (row ?r) (column ?c) (cell-state assigned))
-  (not (particion (miembros $?x ?h $?y)))
-  (not (particion (vecinos $?x ?h $?y)))
+  (not (partition (members $?x ?h $?y)))
+  (not (partition (neighbors $?x ?h $?y)))
   => 
-  (assert (particion (miembros ?h)))
+  (assert (partition (members ?h)))
 )
 
-;;; Cada vez que una cell esta asignada, se une automaticamente a una partición. Si esta 
-;;; vecina de una partición ya existente, se une a esa partición.
-(defrule añadir-assigned-a-particion-existente
+;;; Eveerytime a cell is assigned, it is added to the list of members of a partition. If
+;;; the cell is a neighbor of an already existing partition, the cell is added to that
+;;; very partition.
+(defrule add-assigned-to-existing-partition
   (not (is-error)) 
   ?h1 <- (cell (row ?r1) (column ?c1) (cell-state assigned))
   ?h2 <- (cell (row ?r2) (column ?c2) (cell-state assigned))
-  (test (son-vecinos ?r1 ?c1 ?r2 ?c2))
-  (not (particion (miembros $?a ?h2 $?b)))
-  ?p <- (particion (miembros $?x ?h1 $?y))
+  (test (are-neighbors ?r1 ?c1 ?r2 ?c2))
+  (not (partition (members $?a ?h2 $?b)))
+  ?p <- (partition (members $?x ?h1 $?y))
   => 
-  (modify ?p (miembros $?x ?h1 ?h2 $?y))
+  (modify ?p (members $?x ?h1 ?h2 $?y))
 )
 
-;;; Cada cell que esta desconocida y que esta vecino de una cell que esta parte de
-;;; una partición, se agrega al conjunto de vecinos de la partición
-(defrule añadir-vecino-unknown
+;;; Every cell with state 'unknown' that is adjacent to a cell that is part of a 
+;;; partition, is added to the list of neighbors of the partition.
+(defrule add-unknown-neighbors
   (not (is-error)) 
   ?h1 <- (cell (row ?r1) (column ?c1) (cell-state unknown))
   ?h2 <- (cell (row ?r2) (column ?c2))
-  ?p <- (particion (miembros $? ?h2 $?) (vecinos $?v))
-  (test (son-vecinos ?r1 ?c1 ?r2 ?c2))
+  ?p <- (partition (members $? ?h2 $?) (neighbors $?v))
+  (test (are-neighbors ?r1 ?c1 ?r2 ?c2))
   (test (not (member$ ?h1 ?v)))
   => 
-  (modify ?p (vecinos $?v ?h1))
+  (modify ?p (neighbors $?v ?h1))
 )
 
-;;; Si una cell h esta eliminada y es vecino de una cell que esta parte de una partición,
-;;; la cell h tiene que quitarse del conjunto de vecinos de la partición
-(defrule quitar-vecinos-eliminateds
+;;; If a cell h is elminated and is adjacent to a cell that belongs to a partition, 
+;;; then h has to be removed of the list of neighbors of the partition.
+(defrule remove-eliminated-neighbors
   (not (is-error)) 
   ?h <- (cell (cell-state eliminated))
-  ?p <- (particion (vecinos $?a ?h $?b))
+  ?p <- (partition (neighbors $?a ?h $?b))
   => 
-  (modify ?p (vecinos $?a $?b))
+  (modify ?p (neighbors $?a $?b))
 )
 
-;;; Si un vecino ha cell-state assigned y ahora forma parte de los miembros de una partición,
-;;; entonces se tiene que quitar de los vecinos de la partición
-(defrule quitar-vecinos-assigneds
+;;; If a cell that was a neighbor of a partition has been assigned and is now part of 
+;;; the members of this partition, it has to be removed from the list of neighbors of 
+;;; the partition.
+(defrule remove-assigned-neighbors
   (not (is-error)) 
-  ?p <- (particion (miembros $? ?v $?) (vecinos $?a ?v $?b))
+  ?p <- (partition (members $? ?v $?) (neighbors $?a ?v $?b))
   => 
-  (modify ?p (vecinos $?a $?b))
+  (modify ?p (neighbors $?a $?b))
 )
 
-;;; Si una partición solo tiene a una sola cell desconocida como vecino, entonces esa cell
-;;; tiene que estar asignada, para que la partición no se divida del resto del tablero.
+;;; If a partition has only one cell with cell-state unknown as neighbor, then this cell
+;;; has to be assinged, so that the partition does not get isolated from the rest of the
+;;; gameboard.
 ;;;
-;;; Ejemplo:
+;;; Example:
 ;;;
 ;;; X
-;;; 3 ?     La partición (2,3) solo tiene a un vecino unknown, el resto esta eliminated.
-;;; 2 X     Este vecino tiene que ser assigned, porque el (2,3) no sea aislado del resto del
-;;; X       tablero.
+;;; 3 ?     The partition (2,3) only has one unknown neighbor, the rest is eliminated.
+;;; 2 X     This neighbor has to be assigned, so that the (2,3) does not form an island.
+;;; X
 ;;;
-;;; Asignamos una saliencia a esta regla para que solo se ejecute cuando no hay otra regla
-;;; que podría añadir nuevos vecinos a la partición, pero antes de que el backtracking
-;;; empieza.
-(defrule asignar-unico-vecino
+;;; We'll assign a saliency of -7 to this rule, so that it is only executed when no 
+;;; other rule, that could add new neighbors to the partition, can be executed, but 
+;;; before the backtracking starts.
+(defrule assign-only-neighbor
   (declare (salience -7))
   (not (is-error)) 
   ?h1 <- (cell (row ?r1) (column ?c1) (cell-state unknown))
-  ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
+  ?p <- (partition (members $? ?h2 $?) (neighbors ?h1))
   => 
   (make-backtracking-step ?r1 ?c1)
   (modify ?h1 (cell-state assigned))
 )
 
-;;; Cuando una partición tiene como vecino un miembro de una otra partición, las particiones
-;;; se unen y una de las dos particiones se elimina.
-(defrule unir-dos-particiones
+;;; When a partition has a member of another partition as a neighbor, the two partitions
+;;; unify and become one partition. The other partition is removed.
+(defrule merge-two-partitions
   (not (is-error)) 
   ?h1 <- (cell (row ?r1) (column ?c1))
   ?h2 <- (cell (row ?r2) (column ?c2))
-  (test (son-vecinos ?r1 ?c1 ?r2 ?c2))
-  ?p1 <- (particion (miembros $?x1 ?h1 $?y1))
-  ?p2 <- (particion (miembros $?x2 ?h2 $?y2))
+  (test (are-neighbors ?r1 ?c1 ?r2 ?c2))
+  ?p1 <- (partition (members $?x1 ?h1 $?y1))
+  ?p2 <- (partition (members $?x2 ?h2 $?y2))
   (test (neq ?p1 ?p2))
   =>
-  (modify ?p1 (miembros $?x1 ?h1 $?y1 $?x2 ?h2 $?y2))
+  (modify ?p1 (members $?x1 ?h1 $?y1 $?x2 ?h2 $?y2))
   (retract ?p2)
 )
 
@@ -312,21 +314,21 @@
 )
 
 ;;; Si cada cell tiene un cell-state no unknown, pero hay mas que 1 partición, hay un error.
-(defrule error-mas-que-una-particion-al-final
+(defrule error-mas-que-una-partition-al-final
   (declare (salience -9))
   (not (cell (cell-state unknown)))
-  ?p1 <- (particion)
-  ?p2 <- (particion)
+  ?p1 <- (partition)
+  ?p2 <- (partition)
   (test (neq ?p1 ?p2))
   => 
   (assert (is-error))
 )
 
 ;;; Si todavia hay cells con cell-state unknown, pero tambien una partición que no tiene
-;;; vecinos (porque todos son eliminateds -> la partición es una isla), hay un error.
+;;; neighbors (porque todos son eliminateds -> la partición es una isla), hay un error.
 (defrule cell-encerrada
   (cell (cell-state unknown))
-  (particion (vecinos))
+  (partition (neighbors))
   => 
   (assert (is-error))
 )
@@ -365,7 +367,7 @@
 
  ;;; Guardar como cada partición se cambió durante el backtrack es demasiado cansado, por
  ;;; eso las borramos todas y dejan las reglas reconstruirlas.
- (do-for-all-facts ((?p particion)) TRUE
+ (do-for-all-facts ((?p partition)) TRUE
     (retract ?p)
  )
  (if (eq ?v eliminated) then (retract ?e))
