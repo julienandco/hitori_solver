@@ -131,15 +131,15 @@
   (modify ?h (cell-state assigned)) 
 )
 
-;;; Si una cell que contiene x esta amarcada como assigned, entonces cada cell 
-;;; en la misma row o column que también contiene x, tiene que estar eliminada.
-(defrule eliminar-dobles
+;;; If a cell with value x is marked as 'assigned', then every cell in the 
+;;; same row or column that contains x as well has to be marked as 'eliminated'.
+(defrule eliminate-doubles
   (not (is-error)) 
   (cell (row ?r1) (column ?c1) (cell-value ?v) (cell-state assigned))
   ?h <- (cell (row ?r2) (column ?c2) (cell-value ?v) (cell-state unknown))
   (test (or 
-          (and (= ?r1 ?r2) (neq ?c1 ?c2)) ;;; misma row
-          (and (neq ?r1 ?r2) (= ?c1 ?c2)) ;;; misma column
+          (and (= ?r1 ?r2) (neq ?c1 ?c2)) ;;; same row
+          (and (neq ?r1 ?r2) (= ?c1 ?c2)) ;;; same column
         )
   )
   => 
@@ -147,11 +147,11 @@
   (modify ?h (cell-state eliminated))
 )
 
-;;; Si una cell es la unica que contiene un número x en una row y column, 
-;;; o si es la unica que contiene x con el cell-state unknown y todas las otras
-;;; cells con un x son eliminadas, entonces esta cell debe estar asignada. 
-;;; No hay nada que podría forzarla a estar eliminada.
-(defrule asignar-solteros
+;;; If a cell is the only one that contains the value x in a row or column,
+;;; or if it is the only one that contains x with cell-state unknown and
+;;; all other cells with x are marked as 'eliminated', then this cell has to be
+;;; 'assigned'. There is no reason why it would be forced to be marked as 'eliminated'.
+(defrule assign-solos
   (not (is-error)) 
   ?h <- (cell (row ?r) (column ?c) (cell-value ?v) (cell-state unknown))
   (not (cell (row ?r) (column ?c1&~?c) (cell-value ?v) (cell-state ?e&~eliminated)))
