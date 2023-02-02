@@ -1,367 +1,254 @@
-;;; IC: Trabajo (2022/2023)
-;;; ResoluciÃ³n deductiva del puzle Hitori
-;;; Departamento de Ciencias de la ComputaciÃ³n e Inteligencia Artificial 
-;;; Universidad de Sevilla
+;;;============================================================================
+;;; Representation of the Hitori
 ;;;============================================================================
 
+;;; We'll use the following template to represent the cells of the Hitori.
+;;; Every cell has the following fields:
+;;; - row: The row number of the cell
+;;; - column: The column number of the cell
+;;; - cell-value: The numerical value of the cell
+;;; - cell-state: The cell state. Can be 'unknown', which means that no decision has
+;;;   been taken yet, 'assigned' which means that 'value' will be kept in the 
+;;;   solution or 'eliminated', which means that the value of the cell is deleted
+;;;   in the solution of the Hitori. The default value is 'unknown'.
 
-;;;============================================================================
-;;; IntroducciÃ³n
-;;;============================================================================
-
-;;;   Hitori es uno de los pasatiempos lÃ³gicos popularizados por la revista
-;;; japonesa Nikoli. El objetivo del juego consiste en, dada una cuadrÃ­cula
-;;; con cifras, determinar cuales hay que quitar para conseguir que no haya
-;;; elementos repetidos ni en las filas ni en las columnas. TambiÃ©n hay otras
-;;; restricciones sobre la forma en que se puede eliminar estos elementos y las
-;;; veremos un poco mÃ¡s adelante.
-;;;
-;;;   En concreto vamos a considerar cuadrÃ­culas de tamaÃ±o 9x9 con cifras del 1
-;;; al 9 como la siguiente:
-;;;
-;;;                  â•”â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•—
-;;;                  â•‘ 2 â”‚ 9 â”‚ 8 â”‚ 7 â”‚ 4 â”‚ 6 â”‚ 4 â”‚ 7 â”‚ 6 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 7 â”‚ 4 â”‚ 9 â”‚ 2 â”‚ 8 â”‚ 3 â”‚ 4 â”‚ 3 â”‚ 5 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 4 â”‚ 7 â”‚ 5 â”‚ 3 â”‚ 6 â”‚ 5 â”‚ 6 â”‚ 6 â”‚ 5 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 6 â”‚ 1 â”‚ 3 â”‚ 7 â”‚ 6 â”‚ 9 â”‚ 7 â”‚ 2 â”‚ 4 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 1 â”‚ 3 â”‚ 3 â”‚ 7 â”‚ 2 â”‚ 8 â”‚ 6 â”‚ 5 â”‚ 1 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 9 â”‚ 8 â”‚ 6 â”‚ 2 â”‚ 3 â”‚ 8 â”‚ 5 â”‚ 5 â”‚ 2 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 8 â”‚ 4 â”‚ 7 â”‚ 9 â”‚ 3 â”‚ 3 â”‚ 2 â”‚ 1 â”‚ 6 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 6 â”‚ 2 â”‚ 4 â”‚ 1 â”‚ 7 â”‚ 4 â”‚ 4 â”‚ 9 â”‚ 3 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 8 â”‚ 4 â”‚ 1 â”‚ 3 â”‚ 5 â”‚ 1 â”‚ 9 â”‚ 8 â”‚ 1 â•‘
-;;;                  â•šâ•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•
-;;;
-;;;   El puzle resuelto es el siguiente:
-;;;
-;;;                  â•”â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•¤â•â•â•â•—
-;;;                  â•‘ 2 â”‚ 9 â”‚ 8 â”‚â–“â–“â–“â”‚ 4 â”‚ 6 â”‚â–“â–“â–“â”‚ 7 â”‚â–“â–“â–“â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 7 â”‚â–“â–“â–“â”‚ 9 â”‚ 2 â”‚ 8 â”‚â–“â–“â–“â”‚ 4 â”‚ 3 â”‚ 5 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 4 â”‚ 7 â”‚â–“â–“â–“â”‚ 3 â”‚â–“â–“â–“â”‚ 5 â”‚â–“â–“â–“â”‚ 6 â”‚â–“â–“â–“â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘â–“â–“â–“â”‚ 1 â”‚ 3 â”‚â–“â–“â–“â”‚ 6 â”‚ 9 â”‚ 7 â”‚ 2 â”‚ 4 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 1 â”‚ 3 â”‚â–“â–“â–“â”‚ 7 â”‚ 2 â”‚ 8 â”‚ 6 â”‚ 5 â”‚â–“â–“â–“â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 9 â”‚ 8 â”‚ 6 â”‚â–“â–“â–“â”‚ 3 â”‚â–“â–“â–“â”‚ 5 â”‚â–“â–“â–“â”‚ 2 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 8 â”‚â–“â–“â–“â”‚ 7 â”‚ 9 â”‚â–“â–“â–“â”‚ 3 â”‚ 2 â”‚ 1 â”‚ 6 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘ 6 â”‚ 2 â”‚â–“â–“â–“â”‚ 1 â”‚ 7 â”‚ 4 â”‚â–“â–“â–“â”‚ 9 â”‚ 3 â•‘
-;;;                  â•Ÿâ”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â•¢
-;;;                  â•‘â–“â–“â–“â”‚ 4 â”‚ 1 â”‚â–“â–“â–“â”‚ 5 â”‚â–“â–“â–“â”‚ 9 â”‚ 8 â”‚â–“â–“â–“â•‘
-;;;                  â•šâ•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•§â•â•â•â•
-;;;
-;;;   Se deben cumplir dos restricciones adicionales sobre los elementos
-;;; eliminados:
-;;; 1) No pueden eliminarse elementos en celdas colindantes horizontal o
-;;;    verticalmente. 
-;;; 2) Todas las celdas cuyo valor se mantiene deben formar una Ãºnica
-;;;    componente conectada horizontal o verticalmente
-;;;
-;;;   La primera restricciÃ³n impide que se puedan hacer cosas como esta:
-;;;
-;;;                  â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼
-;;;                  â”‚ 3 â”‚â–“â–“â–“â”‚â–“â–“â–“â”‚ 6 â”‚
-;;;                  â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼
-;;;
-;;;   La segunda restricciÃ³n impide que se puedan hacer cosas como esta:
-;;;
-;;;                  â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼
-;;;                  â”‚ 3 â”‚â–“â–“â–“â”‚ 7 â”‚
-;;;                  â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼
-;;;                  â”‚â–“â–“â–“â”‚ 3 â”‚â–“â–“â–“â”‚
-;;;                  â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼
-;;;                  â”‚ 9 â”‚â–“â–“â–“â”‚ 3 â”‚
-;;;                  â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼â”€â”€â”€â”¼
-;;;
-;;;   TambiÃ©n es importante tener en cuenta que el puzle tiene soluciÃ³n Ãºnica,
-;;; algo que puede ayudar a obtener dicha soluciÃ³n.
-;;;
-;;;   Para ello se proporciona un fichero de ejemplos que contiene 50 puzles
-;;; Hitori con soluciÃ³n Ãºnica de tamaÃ±o 9x9 representados como una Ãºnica lÃ­nea
-;;; en la que tambiÃ©n se indica la soluciÃ³n. Si se transcribe esta lÃ­nea 
-;;; separando las 9 filas tendrÃ­amos lo siguiente:
-;;;
-;;;     w2 w9 w8 b7 w4 w6 b4 w7 b6 
-;;;     w7 b4 w9 w2 w8 b3 w4 w3 w5 
-;;;     w4 w7 b5 w3 b6 w5 b6 w6 b5 
-;;;     b6 w1 w3 b7 w6 w9 w7 w2 w4 
-;;;     w1 w3 b3 w7 w2 w8 w6 w5 b1 
-;;;     w9 w8 w6 b2 w3 b8 w5 b5 w2 
-;;;     w8 b4 w7 w9 b3 w3 w2 w1 w6 
-;;;     w6 w2 b4 w1 w7 w4 b4 w9 w3 
-;;;     b8 w4 w1 b3 w5 b1 w9 w8 b1 
-;;;
-;;; donde cada nÃºmero se corresponde con la cifra que originalmente hay en cada
-;;; celda y las letras w y b representan si en la soluciÃ³n dicho nÃºmero se
-;;; mantiene (w) o se elimina (b).
-
-;;;============================================================================
-;;; RepresentaciÃ³n del Hitori
-;;;============================================================================
-
-;;;   Utilizaremos la siguiente plantilla para representar las celdas del
-;;; Hitori. Cada celda tiene los siguientes campos:
-;;; - fila: NÃºmero de fila en la que se encuentra la celda
-;;; - columna: NÃºmero de columna en la que se encuentra la celda
-;;; - valor: Valor numÃ©rico de la celda
-;;; - estado: Estado de la celda. Puede ser 'desconocido', que indica que
-;;;   todavÃ­a no se ha tomado ninguna decisiÃ³n sobre la celda; 'asignado', que
-;;;   incida que el valor de la celda se mantiene en la soluciÃ³n; y
-;;;   'eliminado', que indica que el valor de la celda es eliminado en la
-;;;   soluciÃ³n. El valor por defecto es 'desconocido'.
-
-(deftemplate celda
-  (slot fila)
-  (slot columna)
-  (slot valor)
-  (slot estado
-	(allowed-values desconocido asignado eliminado)
-	(default desconocido)))
+(deftemplate cell
+  (slot row)
+  (slot column)
+  (slot cell-value)
+  (slot cell-state
+	(allowed-values unknown assigned eliminated)
+	(default unknown)))
 
 ;;;============================================================================
 ;;; Backtracking
 ;;;============================================================================
 
-;;; Template para el backtracking. Nivel es un numero entero non-negativo que 
-;;; describe el nivel de backtracking (la profundidad de la recursividad) en lo
-;;; cual hemos hecho el paso. Primero es un attributo booleano que describe
-;;; si el paso fui el primero (TRUE) o si fui implicado por el primero paso (FALSE)
-;;; (si el paso es la raíz del árbol de recursión o no).
-;;; Fila y columna son los coordenadas de la celda que ha estado cambiada en este paso.
-(deftemplate paso-backtracking
-  (slot nivel)
-  (slot primero (allowed-values FALSE TRUE) (default FALSE))
-  (slot fila)
-  (slot columna)
+;;; Template for the backtracking. Level is a non-negative integer that describes
+;;; the level of backtracking (the depth of the recursion) in which we have done
+;;; the step. First is a boolean attribute that describes if the step was the first
+;;; step of the backtracking process (TRUE) or if it was implied by the first step 
+;;; (FALSE) (this value encodees whether the step is the root of the recursion tree 
+;;; or not). Row and column are the coordinates of the cell that has changed its 
+;;  cell-state in this step.
+(deftemplate backtracking-step
+  (slot level)
+  (slot first (allowed-values FALSE TRUE) (default FALSE))
+  (slot row)
+  (slot column)
 )
 
-;;; Checkear si estamos haciendo backtracking. Si no, no hacemos nada, pero si estamos haciendo
-;;; backtracking, añadir paso de backtracking a los hechos.
-(deffunction hacer-paso-de-backtrack (?f ?c)
+;;; Check whether we are currently doing backtrackingl If not, we do nothing, but if
+;;; there currently is backtracking going on, add the backtracking step to the facts.
+(deffunction make-backtracking-step (?r ?c)
   (bind ?i 0)
-  ;;; Buscamos el nivel lo mas elevado de backtracking activo
-  (do-for-all-facts ((?b paso-backtracking)) TRUE (if (> ?b:nivel ?i) then (bind ?i ?b:nivel)))
+  ;;; We look for the highest currently active backtracking level
+  (do-for-all-facts ((?b backtracking-step)) TRUE (if (> ?b:level ?i) then (bind ?i ?b:level)))
 
-  ;;; Asociamos el paso actual de backtracking a este nivel
-  (do-for-fact ((?b paso-backtracking)) (= ?b:nivel ?i) (assert(paso-backtracking (nivel ?b:nivel) (fila ?f) (columna ?c))))
+  ;;;; We associate the current backtrackign step to that level
+  (do-for-fact ((?b backtracking-step)) (= ?b:level ?i) (assert(backtracking-step (level ?b:level) (row ?r) (column ?c))))
 )
 
 
 ;;;============================================================================
-;;; Estrategias de resoluciÃ³n
-;;;============================================================================
-
-;;;   El objetivo de este trabajo es implementar un programa CLIPS que resuelva
-;;; un Hitori de forma deductiva, es decir, deduciendo si el nÃºmero de una
-;;; celda debe eliminarse o debe mantenerse a partir de reglas que analicen los
-;;; valores y situaciones de las celdas relacionadas.
+;;; Solving Strategies
+;;;===========================================================================;
 
 
-;;; Si un número x esta en una celda y ambos celdas adyacentes en una fila o columna
-;;; contienen el mismo número y != x, entonces x debe ser asignado.
+;;; If a digit x is in a cell and both adjacent cells in a row or column contain
+;;; the same digit y != x, then x must be assigned.
 ;;; 
-;;; Ejemplos:
+;;; Examples:
 ;;;
-;;;   2 3 2 -> el 3 esta asignado
+;;;   2 3 2 -> 3 is assigned
 ;;;
 ;;;     4
-;;;     2   -> el 2 esta asignado
+;;;     2   -> 2 is assigned
 ;;;     4
 ;;;
 (defrule sandwich  
-  ;;; Siempre tenemos que checkear que no haya errores antes de que hagamos algo
-  (not (hay-error)) 
-  ?h <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
-  (celda (fila ?f2) (columna ?c2) (valor ?v))
-  (celda (fila ?f3) (columna ?c3) (valor ?v))
+  ;;; We always have to check whether there are errors before we do anything
+  (not (is-error)) 
+  ?h <- (cell (row ?r1) (column ?c1) (cell-state unknown))
+  (cell (row ?r2) (column ?c2) (cell-value ?v))
+  (cell (row ?r3) (column ?c3) (cell-value ?v))
   (test (or 
-          (and (= ?f1 ?f2) (= ?f1 ?f3) (= ?c2 (+ ?c1 1)) (= ?c3 (- ?c1 1))) ;;; misma fila
-          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?f2 (+ ?f1 1)) (= ?f3 (- ?f1 1))) ;;; misma columna
+          (and (= ?r1 ?r2) (= ?r1 ?r3) (= ?c2 (+ ?c1 1)) (= ?c3 (- ?c1 1))) ;;; same row
+          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?r2 (+ ?r1 1)) (= ?r3 (- ?r1 1))) ;;; same column
         )   
   )
   =>
-  (hacer-paso-de-backtrack ?f1 ?c1)
-  (modify ?h (estado asignado))
+  (make-backtracking-step ?r1 ?c1)
+  (modify ?h (cell-state assigned))
 )
 
-;;; Si hay una pareja de un número x en una fila y hay una otra celda con x en la misma
-;;; fila NON adyacente a la pareja, entonces el x soltero debe ser eliminado.
+;;; If there is a pair of a digit x in a row/column and there is another NON-ADJACENT cell 
+;;; with the value x in the same row/column, then the single x must be eliminated.
 ;;; 
-;;; Ejemplos:
+;;; Examples:
 ;;;
 ;;;   1 2 2 3 4 4 2 8 
 ;;;               ^
-;;;               este 2 se elimina
+;;;               This 2 is eliminated
 ;;;
 ;;;   1 
 ;;;   2 
 ;;;   2
 ;;;   3
 ;;;   4
-;;;   2 <- este 2 se elimina
+;;;   2 <- this 2 is eliminated
 ;;;   8 
 ;;;
-(defrule pareja-y-soltero
-  (not (hay-error)) 
-  ?h <- (celda (fila ?f1) (columna ?c1) (valor ?v) (estado desconocido))
-  (celda (fila ?f2) (columna ?c2) (valor ?v))
-  (celda (fila ?f3) (columna ?c3) (valor ?v))
+(defrule pair-and-single
+  (not (is-error)) 
+  ?h <- (cell (row ?r1) (column ?c1) (cell-value ?v) (cell-state unknown))
+  (cell (row ?r2) (column ?c2) (cell-value ?v))
+  (cell (row ?r3) (column ?c3) (cell-value ?v))
   (test (or 
-          ;;; misma fila, celda2 y celda3 son pareja y celda1 no es adyacente a celda2 o celda3
-          (and (= ?f1 ?f2) (= ?f1 ?f3) (= ?c2 (- ?c3 1)) (or (> ?c1 (+ ?c3 1)) (< ?c1 (- ?c2 1)))) 
-          ;;; misma columna, celda2 y celda3 son pareja y celda1 no es adyacente a celda2 o celda3
-          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?f2 (- ?f3 1)) (or (> ?f1 (+ ?f3 1)) (< ?f1 (- ?f2 1)))) 
+          ;;; same row, cell2 y cell3 are the pair and cell1 is not adjacent to cell2 or cell3
+          (and (= ?r1 ?r2) (= ?r1 ?r3) (= ?c2 (- ?c3 1)) (or (> ?c1 (+ ?c3 1)) (< ?c1 (- ?c2 1)))) 
+          ;;; same column, cell2 y cell3 are the pair and cell1 is not adjacent to cell2 or cell3
+          (and (= ?c1 ?c2) (= ?c1 ?c3) (= ?r2 (- ?r3 1)) (or (> ?r1 (+ ?r3 1)) (< ?r1 (- ?r2 1)))) 
         )
   )
   => 
-  (hacer-paso-de-backtrack ?f1 ?c1)
-  (modify ?h (estado eliminado)) 
+  (make-backtracking-step ?r1 ?c1)
+  (modify ?h (cell-state eliminated)) 
 )
 
-;;; Si una celda esta amarcada como eliminada, entonces cada celda adyacente
-;;; esta asignada, porque no puede haber dos celdas adyacentes eliminadas.
-(defrule asignar-entorno-de-eliminado
-  (not (hay-error)) 
-  (celda (fila ?f1) (columna ?c1) (estado eliminado))
-  ?h <- (celda (fila ?f2) (columna ?c2) (estado desconocido))
-  (test (or (and (= ?f2 (+ ?f1 1)) (= ?c1 ?c2)) ;;; celda abajo
-           (and (= ?f2 (- ?f1 1)) (= ?c1 ?c2)) ;;; celda arriba
-           (and (= ?c2 (+ ?c1 1)) (= ?f1 ?f2)) ;;; celda derecha
-           (and (= ?c2 (- ?c1 1)) (= ?f1 ?f2)))) ;;; celda izquierda
+;;; If a cell is marked as 'eliminated' then every adjacent cell has to be assigned, 
+;;; because there cannot be two adjacent cells marked as 'eliminated'.
+(defrule assign-surroundings-of-eliminated
+  (not (is-error)) 
+  (cell (row ?r1) (column ?c1) (cell-state eliminated))
+  ?h <- (cell (row ?r2) (column ?c2) (cell-state unknown))
+  (test (or (and (= ?r2 (+ ?r1 1)) (= ?c1 ?c2)) ;;; bottom cell
+           (and (= ?r2 (- ?r1 1)) (= ?c1 ?c2)) ;;; top cell
+           (and (= ?c2 (+ ?c1 1)) (= ?r1 ?r2)) ;;; right cell
+           (and (= ?c2 (- ?c1 1)) (= ?r1 ?r2)))) ;;; left cell
   => 
-  (hacer-paso-de-backtrack ?f2 ?c2)
-  (modify ?h (estado asignado)) 
+  (make-backtracking-step ?r2 ?c2)
+  (modify ?h (cell-state assigned)) 
 )
 
-;;; Si una celda que contiene x esta amarcada como asignado, entonces cada celda 
-;;; en la misma fila o columna que también contiene x, tiene que estar eliminada.
+;;; Si una cell que contiene x esta amarcada como assigned, entonces cada cell 
+;;; en la misma row o column que también contiene x, tiene que estar eliminada.
 (defrule eliminar-dobles
-  (not (hay-error)) 
-  (celda (fila ?f1) (columna ?c1) (valor ?v) (estado asignado))
-  ?h <- (celda (fila ?f2) (columna ?c2) (valor ?v) (estado desconocido))
+  (not (is-error)) 
+  (cell (row ?r1) (column ?c1) (cell-value ?v) (cell-state assigned))
+  ?h <- (cell (row ?r2) (column ?c2) (cell-value ?v) (cell-state unknown))
   (test (or 
-          (and (= ?f1 ?f2) (neq ?c1 ?c2)) ;;; misma fila
-          (and (neq ?f1 ?f2) (= ?c1 ?c2)) ;;; misma columna
+          (and (= ?r1 ?r2) (neq ?c1 ?c2)) ;;; misma row
+          (and (neq ?r1 ?r2) (= ?c1 ?c2)) ;;; misma column
         )
   )
   => 
-  (hacer-paso-de-backtrack ?f2 ?c2)
-  (modify ?h (estado eliminado))
+  (make-backtracking-step ?r2 ?c2)
+  (modify ?h (cell-state eliminated))
 )
 
-;;; Si una celda es la unica que contiene un número x en una fila y columna, 
-;;; o si es la unica que contiene x con el estado desconocido y todas las otras
-;;; celdas con un x son eliminadas, entonces esta celda debe estar asignada. 
+;;; Si una cell es la unica que contiene un número x en una row y column, 
+;;; o si es la unica que contiene x con el cell-state unknown y todas las otras
+;;; cells con un x son eliminadas, entonces esta cell debe estar asignada. 
 ;;; No hay nada que podría forzarla a estar eliminada.
 (defrule asignar-solteros
-  (not (hay-error)) 
-  ?h <- (celda (fila ?f) (columna ?c) (valor ?v) (estado desconocido))
-  (not (celda (fila ?f) (columna ?c1&~?c) (valor ?v) (estado ?e&~eliminado)))
-  (not (celda (fila ?f1&~?f) (columna ?c) (valor ?v) (estado ?e&~eliminado)))
+  (not (is-error)) 
+  ?h <- (cell (row ?r) (column ?c) (cell-value ?v) (cell-state unknown))
+  (not (cell (row ?r) (column ?c1&~?c) (cell-value ?v) (cell-state ?e&~eliminated)))
+  (not (cell (row ?r1&~?r) (column ?c) (cell-value ?v) (cell-state ?e&~eliminated)))
   => 
-  (hacer-paso-de-backtrack ?f ?c)
-  (modify ?h (estado asignado))
+  (make-backtracking-step ?r ?c)
+  (modify ?h (cell-state assigned))
 )
 
 ;;;============================================================================
 ;;; Particiones
 ;;;============================================================================
 
-;;; Template para una partición. Miembros es una lista de celdas que pertencecen
-;;; a la partición. Vecinos es una lista de celdas con estado desconocido que
-;;; son vecinos de al menos una celda que esta en la partición (en la lista
+;;; Template para una partición. Miembros es una lista de cells que pertencecen
+;;; a la partición. Vecinos es una lista de cells con cell-state unknown que
+;;; son vecinos de al menos una cell que esta en la partición (en la lista
 ;;; 'miembros').
 (deftemplate particion
   (multislot miembros)
   (multislot vecinos)
 )
 
-;;; Determina si dos celdas son vecinos o no
-(deffunction son-vecinos (?f1 ?c1 ?f2 ?c2)
+;;; Determina si dos cells son vecinos o no
+(deffunction son-vecinos (?r1 ?c1 ?r2 ?c2)
 (return (or 
-        (and (= ?f2 (- ?f1 1)) (= ?c1 ?c2)) ;;; vecino arriba
-        (and (= ?f2 (+ ?f1 1)) (= ?c1 ?c2)) ;;; vecino abajo
-        (and (= ?f1 ?f2) (= ?c2 (+ ?c1 1))) ;;; vecino derecho
-        (and (= ?f1 ?f2) (= ?c2 (- ?c1 1))) ;;; vecino izquierdo
+        (and (= ?r2 (- ?r1 1)) (= ?c1 ?c2)) ;;; vecino arriba
+        (and (= ?r2 (+ ?r1 1)) (= ?c1 ?c2)) ;;; vecino abajo
+        (and (= ?r1 ?r2) (= ?c2 (+ ?c1 1))) ;;; vecino derecho
+        (and (= ?r1 ?r2) (= ?c2 (- ?c1 1))) ;;; vecino izquierdo
         ))
 )
 
-;;; Cada vez que una celda esta asignada, se une automaticamente a una partición. Si no esta 
-;;; vecina de una partición ya existente, se crea una nueva partición que solo contiene la celda 
+;;; Cada vez que una cell esta asignada, se une automaticamente a una partición. Si no esta 
+;;; vecina de una partición ya existente, se crea una nueva partición que solo contiene la cell 
 ;;; que acaba de ser asignada.
-(defrule añadir-asignado-a-particion-nueva
-  (not (hay-error)) 
-  ?h <- (celda (fila ?f) (columna ?c) (estado asignado))
+(defrule añadir-assigned-a-particion-nueva
+  (not (is-error)) 
+  ?h <- (cell (row ?r) (column ?c) (cell-state assigned))
   (not (particion (miembros $?x ?h $?y)))
   (not (particion (vecinos $?x ?h $?y)))
   => 
   (assert (particion (miembros ?h)))
 )
 
-;;; Cada vez que una celda esta asignada, se une automaticamente a una partición. Si esta 
+;;; Cada vez que una cell esta asignada, se une automaticamente a una partición. Si esta 
 ;;; vecina de una partición ya existente, se une a esa partición.
-(defrule añadir-asignado-a-particion-existente
-  (not (hay-error)) 
-  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado asignado))
-  ?h2 <- (celda (fila ?f2) (columna ?c2) (estado asignado))
-  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+(defrule añadir-assigned-a-particion-existente
+  (not (is-error)) 
+  ?h1 <- (cell (row ?r1) (column ?c1) (cell-state assigned))
+  ?h2 <- (cell (row ?r2) (column ?c2) (cell-state assigned))
+  (test (son-vecinos ?r1 ?c1 ?r2 ?c2))
   (not (particion (miembros $?a ?h2 $?b)))
   ?p <- (particion (miembros $?x ?h1 $?y))
   => 
   (modify ?p (miembros $?x ?h1 ?h2 $?y))
 )
 
-;;; Cada celda que esta desconocida y que esta vecino de una celda que esta parte de
+;;; Cada cell que esta desconocida y que esta vecino de una cell que esta parte de
 ;;; una partición, se agrega al conjunto de vecinos de la partición
-(defrule añadir-vecino-desconocido
-  (not (hay-error)) 
-  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
-  ?h2 <- (celda (fila ?f2) (columna ?c2))
+(defrule añadir-vecino-unknown
+  (not (is-error)) 
+  ?h1 <- (cell (row ?r1) (column ?c1) (cell-state unknown))
+  ?h2 <- (cell (row ?r2) (column ?c2))
   ?p <- (particion (miembros $? ?h2 $?) (vecinos $?v))
-  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  (test (son-vecinos ?r1 ?c1 ?r2 ?c2))
   (test (not (member$ ?h1 ?v)))
   => 
   (modify ?p (vecinos $?v ?h1))
 )
 
-;;; Si una celda h esta eliminada y es vecino de una celda que esta parte de una partición,
-;;; la celda h tiene que quitarse del conjunto de vecinos de la partición
-(defrule quitar-vecinos-eliminados
-  (not (hay-error)) 
-  ?h <- (celda (estado eliminado))
+;;; Si una cell h esta eliminada y es vecino de una cell que esta parte de una partición,
+;;; la cell h tiene que quitarse del conjunto de vecinos de la partición
+(defrule quitar-vecinos-eliminateds
+  (not (is-error)) 
+  ?h <- (cell (cell-state eliminated))
   ?p <- (particion (vecinos $?a ?h $?b))
   => 
   (modify ?p (vecinos $?a $?b))
 )
 
-;;; Si un vecino ha estado asignado y ahora forma parte de los miembros de una partición,
+;;; Si un vecino ha cell-state assigned y ahora forma parte de los miembros de una partición,
 ;;; entonces se tiene que quitar de los vecinos de la partición
-(defrule quitar-vecinos-asignados
-  (not (hay-error)) 
+(defrule quitar-vecinos-assigneds
+  (not (is-error)) 
   ?p <- (particion (miembros $? ?v $?) (vecinos $?a ?v $?b))
   => 
   (modify ?p (vecinos $?a $?b))
 )
 
-;;; Si una partición solo tiene a una sola celda desconocida como vecino, entonces esa celda
+;;; Si una partición solo tiene a una sola cell desconocida como vecino, entonces esa cell
 ;;; tiene que estar asignada, para que la partición no se divida del resto del tablero.
 ;;;
 ;;; Ejemplo:
 ;;;
 ;;; X
-;;; 3 ?     La partición (2,3) solo tiene a un vecino desconocido, el resto esta eliminado.
-;;; 2 X     Este vecino tiene que ser asignado, porque el (2,3) no sea aislado del resto del
+;;; 3 ?     La partición (2,3) solo tiene a un vecino unknown, el resto esta eliminated.
+;;; 2 X     Este vecino tiene que ser assigned, porque el (2,3) no sea aislado del resto del
 ;;; X       tablero.
 ;;;
 ;;; Asignamos una saliencia a esta regla para que solo se ejecute cuando no hay otra regla
@@ -369,21 +256,21 @@
 ;;; empieza.
 (defrule asignar-unico-vecino
   (declare (salience -7))
-  (not (hay-error)) 
-  ?h1 <- (celda (fila ?f1) (columna ?c1) (estado desconocido))
+  (not (is-error)) 
+  ?h1 <- (cell (row ?r1) (column ?c1) (cell-state unknown))
   ?p <- (particion (miembros $? ?h2 $?) (vecinos ?h1))
   => 
-  (hacer-paso-de-backtrack ?f1 ?c1)
-  (modify ?h1 (estado asignado))
+  (make-backtracking-step ?r1 ?c1)
+  (modify ?h1 (cell-state assigned))
 )
 
 ;;; Cuando una partición tiene como vecino un miembro de una otra partición, las particiones
 ;;; se unen y una de las dos particiones se elimina.
 (defrule unir-dos-particiones
-  (not (hay-error)) 
-  ?h1 <- (celda (fila ?f1) (columna ?c1))
-  ?h2 <- (celda (fila ?f2) (columna ?c2))
-  (test (son-vecinos ?f1 ?c1 ?f2 ?c2))
+  (not (is-error)) 
+  ?h1 <- (cell (row ?r1) (column ?c1))
+  ?h2 <- (cell (row ?r2) (column ?c2))
+  (test (son-vecinos ?r1 ?c1 ?r2 ?c2))
   ?p1 <- (particion (miembros $?x1 ?h1 $?y1))
   ?p2 <- (particion (miembros $?x2 ?h2 $?y2))
   (test (neq ?p1 ?p2))
@@ -397,201 +284,201 @@
 ;;; Backtracking
 ;;;============================================================================
 
-;;; Empieza el primero nivel del backtracking, si no hay otra regla que se activa y que el puzle
+;;; Empieza el first level del backtracking, si no hay otra regla que se activa y que el puzle
 ;;; todavía no está resuelto.
-(defrule backtrack-inicio-primero-nivel
+(defrule backtrack-inicio-first-level
  (declare (salience -9))
- (not (paso-backtracking))
+ (not (backtracking-step))
  (not (puzle-resuelto))
- (not (hay-error))
- ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
+ (not (is-error))
+ ?h <- (cell (row ?r) (column ?c) (cell-state unknown))
  => 
- (assert (paso-backtracking (nivel 0) (primero TRUE) (fila ?f) (columna ?c)))
- (modify ?h (estado eliminado))
+ (assert (backtracking-step (level 0) (first TRUE) (row ?r) (column ?c)))
+ (modify ?h (cell-state eliminated))
 )
 
-;;; Empieza un nivel avanzado (empieza la recursion) del backtracking, si no hay otra regla 
+;;; Empieza un level avanzado (empieza la recursion) del backtracking, si no hay otra regla 
 ;;; que se activa y que el puzle todavía no está resuelto.
-(defrule backtrack-inicio-nivel-avanzado
+(defrule backtrack-inicio-level-avanzado
  (declare (salience -9))
- (paso-backtracking (nivel ?i1))
- (forall (paso-backtracking (nivel ?i2)) (test (<= ?i2 ?i1)))
+ (backtracking-step (level ?i1))
+ (forall (backtracking-step (level ?i2)) (test (<= ?i2 ?i1)))
  (not (puzle-resuelto))
- (not (hay-error))
- ?h <- (celda (fila ?f) (columna ?c) (estado desconocido))
+ (not (is-error))
+ ?h <- (cell (row ?r) (column ?c) (cell-state unknown))
  => 
- (assert (paso-backtracking (nivel (+ ?i1 1)) (primero TRUE) (fila ?f) (columna ?c)))
- (modify ?h (estado eliminado))
+ (assert (backtracking-step (level (+ ?i1 1)) (first TRUE) (row ?r) (column ?c)))
+ (modify ?h (cell-state eliminated))
 )
 
-;;; Si cada celda tiene un estado no desconocido, pero hay mas que 1 partición, hay un error.
+;;; Si cada cell tiene un cell-state no unknown, pero hay mas que 1 partición, hay un error.
 (defrule error-mas-que-una-particion-al-final
   (declare (salience -9))
-  (not (celda (estado desconocido)))
+  (not (cell (cell-state unknown)))
   ?p1 <- (particion)
   ?p2 <- (particion)
   (test (neq ?p1 ?p2))
   => 
-  (assert (hay-error))
+  (assert (is-error))
 )
 
-;;; Si todavia hay celdas con estado desconocido, pero tambien una partición que no tiene
-;;; vecinos (porque todos son eliminados -> la partición es una isla), hay un error.
-(defrule celda-encerrada
-  (celda (estado desconocido))
+;;; Si todavia hay cells con cell-state unknown, pero tambien una partición que no tiene
+;;; vecinos (porque todos son eliminateds -> la partición es una isla), hay un error.
+(defrule cell-encerrada
+  (cell (cell-state unknown))
   (particion (vecinos))
   => 
-  (assert (hay-error))
+  (assert (is-error))
 )
 
-;;; Si descubrimos que hay un error, reasignamos el estado desconocido a cada celda que
-;;; ha estado cambiada durante el backtrack.
-(defrule deshacer-paso-de-backtrack
- (hay-error)
- ?b <- (paso-backtracking (nivel ?i1) (primero FALSE) (fila ?f) (columna ?c))
- (forall (paso-backtracking (nivel ?i2)) (test (<= ?i2 ?i1)))
- ?h <- (celda (fila ?f) (columna ?c))
+;;; Si descubrimos que hay un error, reasignamos el cell-state unknown a cada cell que
+;;; ha cell-state cambiada durante el backtrack.
+(defrule desmake-backtracking-step
+ (is-error)
+ ?b <- (backtracking-step (level ?i1) (first FALSE) (row ?r) (column ?c))
+ (forall (backtracking-step (level ?i2)) (test (<= ?i2 ?i1)))
+ ?h <- (cell (row ?r) (column ?c))
  => 
- (modify ?h (estado desconocido))
+ (modify ?h (cell-state unknown))
  (retract ?b)
 )
 
-;;; Si descubrimos que haya un error en el nivel 0 y que solo queda el primero paso de backtrack a deshacer,
-;;; asignamos el estado asignado a la celda que iniciaba el backtrack. Esto es porque cuando
-;;; empezamos el backtrack, la primera celda recibió el estado eliminado. Pero eso ha provocado
-;;; un error, por eso sabemos que la celda tiene que ser asignada.
+;;; Si descubrimos que haya un error en el level 0 y que solo queda el first paso de backtrack a deshacer,
+;;; asignamos el cell-state assigned a la cell que iniciaba el backtrack. Esto es porque cuando
+;;; empezamos el backtrack, la primera cell recibió el cell-state eliminated. Pero eso ha provocado
+;;; un error, por eso sabemos que la cell tiene que ser asignada.
 ;;;
-;;; Si por otra parte somos en un nivel n avanzado, no sabemos el valor que la celda tiene que tener.
-;;; Entonces, la decision que hemos tomado en el nivel n-1 era incorrecta y tenemos que cambiarla.
-;;; Por eso, la celda del inicio del backtrack del nivel n recibe el estado desconocido y el
-;;; error se propaga al nivel n-1 (el hecho 'hay-error' no se retracta).
+;;; Si por otra parte somos en un level n avanzado, no sabemos el cell-value que la cell tiene que tener.
+;;; Entonces, la decision que hemos tomado en el level n-1 era incorrecta y tenemos que cambiarla.
+;;; Por eso, la cell del inicio del backtrack del level n recibe el cell-state unknown y el
+;;; error se propaga al level n-1 (el hecho 'is-error' no se retracta).
 (defrule deshacer-primer-paso-de-backtrack
- ?e <- (hay-error)
- ?b <- (paso-backtracking (nivel ?i1) (primero TRUE) (fila ?f) (columna ?c))
- (forall (paso-backtracking (nivel ?i2)) (test (<= ?i2 ?i1)))
- (not (paso-backtracking (nivel ?i1) (primero FALSE)))
- ?h <- (celda (fila ?f) (columna ?c) (estado ?v))
- (test (or (eq ?v asignado) (eq ?v eliminado)))
+ ?e <- (is-error)
+ ?b <- (backtracking-step (level ?i1) (first TRUE) (row ?r) (column ?c))
+ (forall (backtracking-step (level ?i2)) (test (<= ?i2 ?i1)))
+ (not (backtracking-step (level ?i1) (first FALSE)))
+ ?h <- (cell (row ?r) (column ?c) (cell-state ?v))
+ (test (or (eq ?v assigned) (eq ?v eliminated)))
  => 
- (if (eq ?v eliminado) then (modify ?h (estado asignado)) else (modify ?h (estado desconocido)))
- (if (or (= ?i1 0) (eq ?v asignado)) then (retract ?b))
+ (if (eq ?v eliminated) then (modify ?h (cell-state assigned)) else (modify ?h (cell-state unknown)))
+ (if (or (= ?i1 0) (eq ?v assigned)) then (retract ?b))
 
  ;;; Guardar como cada partición se cambió durante el backtrack es demasiado cansado, por
  ;;; eso las borramos todas y dejan las reglas reconstruirlas.
  (do-for-all-facts ((?p particion)) TRUE
     (retract ?p)
  )
- (if (eq ?v eliminado) then (retract ?e))
+ (if (eq ?v eliminated) then (retract ?e))
 )
 
 ;;;============================================================================
-;;; Reglas para imprimir el resultado
+;;; Rules to print the result
 ;;;============================================================================
 
-;;;   Las siguientes reglas permiten visualizar el estado del hitori, una vez
-;;; aplicadas todas las reglas que implementan las estrategias de resoluciÃ³n.
-;;; La prioridad de estas reglas es -10 para que sean las Ãºltimas en aplicarse.
+;;; The following rules allow to visualize the state of the hitori, once
+;;; that all the rules that implement the resolution strategies have been applied.
+;;; The priority of these printing rules is -10 so that they are the last ones to 
+;;; be applied.
 
-;;;   Para cualquier puzle se muestra a la izquierda el estado inicial del
-;;; tablero y a la derecha la situaciÃ³n a la que se llega tras aplicar todas
-;;; las estrategias de resoluciÃ³n. En el tablero de la derecha, las celdas que
-;;; tienen un estado 'asignado' contienen el valor numÃ©rico asociado, las
-;;; celdas que tienen un estado 'eliminado' contienen un espacio en blanco y
-;;; las celdas con el estado 'desconocido' contienen un sÃ­mbolo '?'.
+;;; For every puzzle the left side shows the initial state of the board and the
+;;; right side shows the final state after applying all the resolution strategies.
+;;; 
+;;; On the right board, the cells that have the status 'assigned' contain the
+;;; numeric value associated, the cells that have the status 'eliminated' contain
+;;; whitespace and the cells with state 'unknown' contain a '?' symbol.
 
-(defrule imprime-solucion
+(defrule print-solution
   (declare (salience -10))
   =>
-  (printout t " Original           Solución " crlf)  
+  (printout t " Original           Solution " crlf)  
   (printout t "+---------+        +---------+" crlf)
-  (assert (imprime 1)))
+  (assert (print 1)))
 
-(defrule imprime-fila
+(defrule print-row
   (declare (salience -10))
-  ?h <- (imprime ?i&:(<= ?i 9))
-  (celda (fila ?i) (columna 1) (valor ?v1) (estado ?s1))
-  (celda (fila ?i) (columna 2) (valor ?v2) (estado ?s2))
-  (celda (fila ?i) (columna 3) (valor ?v3) (estado ?s3))
-  (celda (fila ?i) (columna 4) (valor ?v4) (estado ?s4))
-  (celda (fila ?i) (columna 5) (valor ?v5) (estado ?s5))
-  (celda (fila ?i) (columna 6) (valor ?v6) (estado ?s6))
-  (celda (fila ?i) (columna 7) (valor ?v7) (estado ?s7))
-  (celda (fila ?i) (columna 8) (valor ?v8) (estado ?s8))
-  (celda (fila ?i) (columna 9) (valor ?v9) (estado ?s9))
+  ?h <- (print ?i&:(<= ?i 9))
+  (cell (row ?i) (column 1) (cell-value ?v1) (cell-state ?s1))
+  (cell (row ?i) (column 2) (cell-value ?v2) (cell-state ?s2))
+  (cell (row ?i) (column 3) (cell-value ?v3) (cell-state ?s3))
+  (cell (row ?i) (column 4) (cell-value ?v4) (cell-state ?s4))
+  (cell (row ?i) (column 5) (cell-value ?v5) (cell-state ?s5))
+  (cell (row ?i) (column 6) (cell-value ?v6) (cell-state ?s6))
+  (cell (row ?i) (column 7) (cell-value ?v7) (cell-state ?s7))
+  (cell (row ?i) (column 8) (cell-value ?v8) (cell-state ?s8))
+  (cell (row ?i) (column 9) (cell-value ?v9) (cell-state ?s9))
   =>
   (retract ?h)
-  (bind ?fila1 (sym-cat ?v1 ?v2 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9))
-  (bind ?w1 (if (eq ?s1 asignado) then ?v1
-	      else (if (eq ?s1 eliminado) then " " else "?")))
-  (bind ?w2 (if (eq ?s2 asignado) then ?v2
-	      else (if (eq ?s2 eliminado) then " " else "?")))
-  (bind ?w3 (if (eq ?s3 asignado) then ?v3
-	      else (if (eq ?s3 eliminado) then " " else "?")))
-  (bind ?w4 (if (eq ?s4 asignado) then ?v4
-	      else (if (eq ?s4 eliminado) then " " else "?")))
-  (bind ?w5 (if (eq ?s5 asignado) then ?v5
-	      else (if (eq ?s5 eliminado) then " " else "?")))
-  (bind ?w6 (if (eq ?s6 asignado) then ?v6
-	      else (if (eq ?s6 eliminado) then " " else "?")))
-  (bind ?w7 (if (eq ?s7 asignado) then ?v7
-	      else (if (eq ?s7 eliminado) then " " else "?")))
-  (bind ?w8 (if (eq ?s8 asignado) then ?v8
-	      else (if (eq ?s8 eliminado) then " " else "?")))
-  (bind ?w9 (if (eq ?s9 asignado) then ?v9
-	      else (if (eq ?s9 eliminado) then " " else "?")))
-  (bind ?fila2 (sym-cat ?w1 ?w2 ?w3 ?w4 ?w5 ?w6 ?w7 ?w8 ?w9))
-  (printout t "|" ?fila1 "|        |" ?fila2 "|" crlf)
+  (bind ?row1 (sym-cat ?v1 ?v2 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9))
+  (bind ?w1 (if (eq ?s1 assigned) then ?v1
+	      else (if (eq ?s1 eliminated) then " " else "?")))
+  (bind ?w2 (if (eq ?s2 assigned) then ?v2
+	      else (if (eq ?s2 eliminated) then " " else "?")))
+  (bind ?w3 (if (eq ?s3 assigned) then ?v3
+	      else (if (eq ?s3 eliminated) then " " else "?")))
+  (bind ?w4 (if (eq ?s4 assigned) then ?v4
+	      else (if (eq ?s4 eliminated) then " " else "?")))
+  (bind ?w5 (if (eq ?s5 assigned) then ?v5
+	      else (if (eq ?s5 eliminated) then " " else "?")))
+  (bind ?w6 (if (eq ?s6 assigned) then ?v6
+	      else (if (eq ?s6 eliminated) then " " else "?")))
+  (bind ?w7 (if (eq ?s7 assigned) then ?v7
+	      else (if (eq ?s7 eliminated) then " " else "?")))
+  (bind ?w8 (if (eq ?s8 assigned) then ?v8
+	      else (if (eq ?s8 eliminated) then " " else "?")))
+  (bind ?w9 (if (eq ?s9 assigned) then ?v9
+	      else (if (eq ?s9 eliminated) then " " else "?")))
+  (bind ?row2 (sym-cat ?w1 ?w2 ?w3 ?w4 ?w5 ?w6 ?w7 ?w8 ?w9))
+  (printout t "|" ?row1 "|        |" ?row2 "|" crlf)
   (if (= ?i 9)
       then (printout t "+---------+        +---------+" crlf)
-    else (assert (imprime (+ ?i 1))))
+    else (assert (print (+ ?i 1))))
   )
 
 ;;;============================================================================
-;;; Funcionalidad para leer los puzles del fichero de ejemplos
+;;; Functionality to read puzzles from a document
 ;;;============================================================================
 
-;;;   Esta funciÃ³n construye los hechos que describen un puzle a partir de una
-;;; lÃ­nea leida del fichero de ejemplos.
+;;; This function builds up the assertions that describe a puzzle going from a
+;;; line that has been read from an input file.
 
-(deffunction procesa-datos-ejemplo (?datos)
+(deffunction process-puzzle-data (?data)
   (loop-for-count
    (?i 1 9)
    (loop-for-count
     (?j 1 9)
     (bind ?s1 (* 2 (+ ?j (* 9 (- ?i 1)))))
-    (bind ?v (sub-string ?s1 ?s1 ?datos))
-    (assert (celda (fila ?i) (columna ?j) (valor ?v))))))
+    (bind ?v (sub-string ?s1 ?s1 ?data))
+    (assert (cell (row ?i) (column ?j) (cell-value ?v))))))
 
-;;;   Esta funciÃ³n localiza el puzle que se quiere resolver en el fichero de
-;;; ejemplos. 
+;;; This function reads the n-th puzzle from the file "puzzles.txt".
 
-(deffunction lee-puzle (?n)
-  (open "ejemplos.txt" data "r")
+(deffunction read-puzzle (?n)
+  (open "puzzles.txt" puzzle "r")
   (loop-for-count (?i 1 (- ?n 1))
-                  (readline data))
-  (bind ?datos (readline data))
+                  (readline puzzle))
+  (bind ?data (readline puzzle))
   (reset)
-  (procesa-datos-ejemplo ?datos)
+  (process-puzzle-data ?data)
   (run)
-  (close data)
+  (close puzzle)
 )
 
-;;; Esta funciÃ³n comprueba todos los puzles de un fichero que se pasa como
-;;; argumento. Se usa:
-;;; CLIPS> (procesa-ejemplos)
+;;; This function solves all the puzzles inside a file that follows the same
+;;; structure as the file "puzzles.txt". It is used as follows:
+;;; CLIPS> (solve-puzzles)
 
-(deffunction procesa-ejemplos ()
-  (open "ejemplos.txt" data "r")
-  (bind ?datos (readline data))
+(deffunction solve-puzzles ()
+  (open "puzzles.txt" puzzles "r")
+  (bind ?data (readline puzzles))
   (bind ?i 0)
-  (while (neq ?datos EOF)
+  (while (neq ?data EOF)
    (bind ?i (+ ?i 1))
    (reset)
-   (procesa-datos-ejemplo ?datos)
-   (printout t "ejemplos.txt :" ?i crlf)
+   (process-puzzle-data ?data)
+   (printout t "puzzles.txt :" ?i crlf)
    (run)
-   (bind ?datos (readline data))
+   (bind ?data (readline puzzles))
   )
-  (close data))
+  (close puzzles))
 
 ;;;============================================================================
