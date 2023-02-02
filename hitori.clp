@@ -286,12 +286,11 @@
 ;;; Backtracking
 ;;;============================================================================
 
-;;; Empieza el first level del backtracking, si no hay otra regla que se activa y que el puzle
-;;; todavía no está resuelto.
-(defrule backtrack-inicio-first-level
+;;; The first level of backtracking begins, when there is no other rule that could
+;;; fire, no error has been detected and there is no backtracking step in progress.
+(defrule start-first-level-backtracking
  (declare (salience -9))
  (not (backtracking-step))
- (not (puzle-resuelto))
  (not (is-error))
  ?h <- (cell (row ?r) (column ?c) (cell-state unknown))
  => 
@@ -299,13 +298,13 @@
  (modify ?h (cell-state eliminated))
 )
 
-;;; Empieza un level avanzado (empieza la recursion) del backtracking, si no hay otra regla 
-;;; que se activa y que el puzle todavía no está resuelto.
-(defrule backtrack-inicio-level-avanzado
+;;; A deeper level (i+1) of backtracking begins (begin of recursion) when there is no other 
+;;; rule that could fire, no error has been detected and there is backtracking step 
+;;; with level i in progress.
+(defrule start-deeper-level-backtracking
  (declare (salience -9))
  (backtracking-step (level ?i1))
  (forall (backtracking-step (level ?i2)) (test (<= ?i2 ?i1)))
- (not (puzle-resuelto))
  (not (is-error))
  ?h <- (cell (row ?r) (column ?c) (cell-state unknown))
  => 
@@ -313,8 +312,9 @@
  (modify ?h (cell-state eliminated))
 )
 
-;;; Si cada cell tiene un cell-state no unknown, pero hay mas que 1 partición, hay un error.
-(defrule error-mas-que-una-partition-al-final
+;;; If every cell has a cell-state different from 'unknown', but there is more than
+;;; one partition, then there is an error.
+(defrule error-more-than-one-partition
   (declare (salience -9))
   (not (cell (cell-state unknown)))
   ?p1 <- (partition)
@@ -324,18 +324,19 @@
   (assert (is-error))
 )
 
-;;; Si todavia hay cells con cell-state unknown, pero tambien una partición que no tiene
-;;; neighbors (porque todos son eliminateds -> la partición es una isla), hay un error.
-(defrule cell-encerrada
+;;; If there still are cells with cell-state 'unknown', but there also is a partition
+;;; withtout neighbors (because all neighbors are eliminated -> the partition is an
+;;; island), then there is an error.
+(defrule error-island-cell
   (cell (cell-state unknown))
   (partition (neighbors))
   => 
   (assert (is-error))
 )
 
-;;; Si descubrimos que hay un error, reasignamos el cell-state unknown a cada cell que
-;;; ha cell-state cambiada durante el backtrack.
-(defrule desmake-backtracking-step
+;;; If we discover an error, we reassign the cell-state to 'unknown' for all cells
+;;; that have been changed during the backtracking.
+(defrule undo-backtracking-step
  (is-error)
  ?b <- (backtracking-step (level ?i1) (first FALSE) (row ?r) (column ?c))
  (forall (backtracking-step (level ?i2)) (test (<= ?i2 ?i1)))
@@ -345,16 +346,18 @@
  (retract ?b)
 )
 
-;;; Si descubrimos que haya un error en el level 0 y que solo queda el first paso de backtrack a deshacer,
-;;; asignamos el cell-state assigned a la cell que iniciaba el backtrack. Esto es porque cuando
-;;; empezamos el backtrack, la primera cell recibió el cell-state eliminated. Pero eso ha provocado
-;;; un error, por eso sabemos que la cell tiene que ser asignada.
+;;; If we discover that there is an error on the first level of backtracking and that 
+;;; only the first step of backtracking has to be undone, then we assign the cell-state
+;;; 'assign' to the cell that had initiated the backtracking. We do so, because when we
+;;; start backtracking, the first cell recieves the cell-state 'eliminated'. But this has
+;;; led to an error, so the correct state must be 'assigned'.
 ;;;
-;;; Si por otra parte somos en un level n avanzado, no sabemos el cell-value que la cell tiene que tener.
-;;; Entonces, la decision que hemos tomado en el level n-1 era incorrecta y tenemos que cambiarla.
-;;; Por eso, la cell del inicio del backtrack del level n recibe el cell-state unknown y el
-;;; error se propaga al level n-1 (el hecho 'is-error' no se retracta).
-(defrule deshacer-primer-paso-de-backtrack
+;;; If on the other hand we were on a deeper level n of backtracking, we don't know the
+;;; cell-value of the current cell. So the decision that we made on level n-1 was wrong
+;;; and we have to undo it. That's why the cell at the beginning of the backtrack of level n
+;;; receives the cell-state 'unknown' and the error propagates to level n-1 (the fact is-error
+;;; is not retracted until we get to the first level).
+(defrule undo-first-backtracking-step
  ?e <- (is-error)
  ?b <- (backtracking-step (level ?i1) (first TRUE) (row ?r) (column ?c))
  (forall (backtracking-step (level ?i2)) (test (<= ?i2 ?i1)))
@@ -365,8 +368,9 @@
  (if (eq ?v eliminated) then (modify ?h (cell-state assigned)) else (modify ?h (cell-state unknown)))
  (if (or (= ?i1 0) (eq ?v assigned)) then (retract ?b))
 
- ;;; Guardar como cada partición se cambió durante el backtrack es demasiado cansado, por
- ;;; eso las borramos todas y dejan las reglas reconstruirlas.
+ ;;; Saving how every partition changes during the backtracking is too much work, so
+ ;;; if we are to undo a backtracking step, we delete all of them and let the rules
+ ;;; rebuild them.
  (do-for-all-facts ((?p partition)) TRUE
     (retract ?p)
  )
