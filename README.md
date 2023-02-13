@@ -9,5 +9,5 @@ To run the solver, you need to have [CLIPS](https://www.clipsrules.net/) install
 ```bash
 CLIPS> (load "hitori.clp")
 CLIPS> (solve-puzzles)     # If you want to solve all the puzzles from puzzles.txt
-CLIPS> (read-puzzle 23)    # If you want to the 23rd puzzle from puzzles.txt
+CLIPS> (read-puzzle 23)    # If you want to solve the 23rd puzzle from puzzles.txt
 ```
